@@ -819,7 +819,6 @@ for e = 1, opt.nepisodes do
 
     -- run model specific statistics
     model.stats(opt, game, stats, e)
-
     -- run model specific statistics
     model.save(opt, stats, model)
 end
