@@ -619,7 +619,7 @@ for e = 1, opt.nepisodes do
         gradParams:zero()
     end
 
-    -- Backwawrd pass
+    -- Backward pass
     local step_back = 1
     for step = episode.nsteps, 1, -1 do
         stats.td_err[(e - 1) % opt.step + 1] = 0

@@ -22,8 +22,7 @@ function Lever:__init(opt)
         { 'game_comm_sigma', type = 'number', default = 2 },
     })
 
-    -- Steps max override
-    opt.nsteps = 4 * opt.game_nagents - 6
+
 
     for k, v in pairs(opt_game) do
         if not opt[k] then
@@ -52,11 +51,12 @@ function Lever:reset()
     self.step_counter = 1
 
     -- Who is in
+    print(self.opt.nsteps)
     self.active_agent = torch.zeros(self.opt.bs, self.opt.nsteps, self.opt.game_nagents)
     for b = 1, self.opt.bs do
         for step = 1, self.opt.nsteps do
 		for agent = 1, self.opt.game_nagents do
-            		self.active_agent[{ { b }, { step } , { agent } }] = torch.random(0, 1)
+            		self.active_agent[{ { b }, { step } , { agent } }] = torch.random(1, 2)
 		end
         end
     end
@@ -65,6 +65,7 @@ function Lever:reset()
 end
 
 function Lever:getActionRange(step, agent)
+    print('getActionRange')
     local range = {}
     if self.opt.model_dial == 1 then           
         local bound = self.opt.game_action_space
@@ -95,23 +96,18 @@ end
 
 function Lever:getCommLimited(step, i)
     if self.opt.game_comm_limited then
-	print('in here again')
-	print(i)
-	print(i==1)
+	print('getCommLimited')
 
         local range = {}
 
         -- Get range per batch
         for b = 1, self.opt.bs do
-            -- if agent is active read from field of previous agent
             if step > 1 and i == 1 then
-		print('but neither here')
                 range[b] = { 2, {} }
             elseif step > 1 and i == 2 then
-		print('nor here')
-	    else
                 range[b] = { 1, {} }
-		
+	    else
+                range[b] = 0
             end
         end
         return range
@@ -149,13 +145,18 @@ end
 
 
 function Lever:getState()
+    print('getState')
     local state = {}
 
     for agent = 1, self.opt.game_nagents do
         state[agent] = torch.Tensor(self.opt.bs)
 
         for b = 1, self.opt.bs do
+	    if (self.step_counter == self.opt.nsteps) then
+		state[agent][{ { b } }] = 2
+	    else
                 state[agent][{ { b } }] = self.active_agent[b][self.step_counter+1][agent]
+	    end
         end
     end
 
