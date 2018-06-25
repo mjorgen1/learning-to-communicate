@@ -114,7 +114,7 @@ function Lever:getCommLimited(step, i)
 end
 
 function Lever:getReward(a_t)
-
+    print('getReward')
     for b = 1, self.opt.bs do
         if (a_t[b][1] == 2 and a_t[b][2] == 2) then -- both did pull
                 self.reward[b] = self.reward_all_live
