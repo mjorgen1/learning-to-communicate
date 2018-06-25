@@ -1,7 +1,7 @@
 #!/bin/bash
 th comm.lua \
--game Switch \
--game_nagents 3 \
+-game Lever \
+-game_nagents 2 \
 -game_action_space 2 \
 -game_comm_limited 1 \
 -game_comm_bits 2 \

@@ -6,7 +6,7 @@ local kwargs = require 'include.kwargs'
 local util = require 'include.util'
 
 
-local Switch = class('Switch')
+local Lever = class('Lever')
 
 -- Actions
 -- 1 = on
@@ -14,7 +14,7 @@ local Switch = class('Switch')
 -- 3 = tell
 -- 4* = none
 
-function Switch:__init(opt)
+function Lever:__init(opt)
     local opt_game = kwargs(_, {
         { 'game_action_space', type = 'int-pos', default = 2 },
         { 'game_reward_shift', type = 'int', default = 0 },
@@ -40,7 +40,7 @@ function Switch:__init(opt)
     self:reset()
 end
 
-function Switch:reset()
+function Lever:reset()
 
     -- Reset rewards
     self.reward = torch.zeros(self.opt.bs, self.opt.game_nagents)
@@ -64,20 +64,20 @@ function Switch:reset()
     return self
 end
 
-function Switch:getActionRange(step, agent)
+function Lever:getActionRange(step, agent)
     local range = {}
-    if self.opt.model_dial == 1 then           --did not change, can use rial or dial opt in executable
+    if self.opt.model_dial == 1 then           
         local bound = self.opt.game_action_space
 
         for i = 1, self.opt.bs do
-            if self.active_agent[i][step] == agent then
+            if self.active_agent[i][step][agent] == 1 then
                 range[i] = { { i }, { 1, bound } }
             else
                 range[i] = { { i }, { 1 } }
             end
         end
         return range
-    else
+    else					--the rial option was not updated to fit the Lever game yet
         local comm_range = {}
         for i = 1, self.opt.bs do
             if self.active_agent[i][step] == agent then
@@ -93,18 +93,25 @@ function Switch:getActionRange(step, agent)
 end
 
 
-function Switch:getCommLimited(step, i)
+function Lever:getCommLimited(step, i)
     if self.opt.game_comm_limited then
+	print('in here again')
+	print(i)
+	print(i==1)
 
         local range = {}
 
         -- Get range per batch
         for b = 1, self.opt.bs do
             -- if agent is active read from field of previous agent
-            if step > 1 and i == self.active_agent[b][step] then
-                range[b] = { self.active_agent[b][step - 1], {} }
-            else
-                range[b] = 0
+            if step > 1 and i == 1 then
+		print('but neither here')
+                range[b] = { 2, {} }
+            elseif step > 1 and i == 2 then
+		print('nor here')
+	    else
+                range[b] = { 1, {} }
+		
             end
         end
         return range
@@ -113,7 +120,7 @@ function Switch:getCommLimited(step, i)
     end
 end
 
-function Switch:getReward(a_t)
+function Lever:getReward(a_t)
 
     for b = 1, self.opt.bs do
         if (a_t[b][1] == 2 and a_t[b][2] == 2) then -- both did pull
@@ -129,7 +136,7 @@ function Switch:getReward(a_t)
     return self.reward:clone(), self.terminal:clone()
 end
 
-function Switch:step(a_t)
+function Lever:step(a_t)
 
     -- Get rewards
     local reward, terminal = self:getReward(a_t)
@@ -141,19 +148,19 @@ function Switch:step(a_t)
 end
 
 
-function Switch:getState()
+function Lever:getState()
     local state = {}
 
     for agent = 1, self.opt.game_nagents do
         state[agent] = torch.Tensor(self.opt.bs)
 
         for b = 1, self.opt.bs do
-                state[agent][{ { b } }] = self.active_agent[b][self.step_counter+1]
+                state[agent][{ { b } }] = self.active_agent[b][self.step_counter+1][agent]
         end
     end
 
     return state
 end
 
-return Switch
+return Lever
 
