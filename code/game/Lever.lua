@@ -54,14 +54,15 @@ function Lever:reset()
     self.step_counter = 1
 
     -- Who is in
-    print(self.opt.nsteps)
     self.active_agent = torch.zeros(self.opt.bs, self.opt.nsteps, self.opt.game_nagents)
+   local two = torch.zeros(1)
+    two[1] = 2
     for b = 1, self.opt.bs do
         for step = 1, self.opt.nsteps do
-		    for agent = 1, self.opt.game_nagents do
+	    for agent = 1, self.opt.game_nagents do
             	self.active_agent[{ { b }, { step } , { agent } }] = torch.random(1, 2)
             end
-            if (self.active_agent[{ {b}, {step}, {1} }] == 2 and self.active_agent[{ {b}, {step}, {2} }] == 2) and (step > 1) then
+            if (self.active_agent[b][step][1] == 2 and self.active_agent[b][step][2] == 2) and (step > 1) then
                 self.correctPulls[b] = self.correctPulls[b] + 1
             end
         end
@@ -71,13 +72,12 @@ function Lever:reset()
 end
 
 function Lever:getActionRange(step, agent)
-    print('getActionRange')
     local range = {}
     if self.opt.model_dial == 1 then           
         local bound = self.opt.game_action_space
 
         for i = 1, self.opt.bs do
-            if self.active_agent[i][step][agent] == 2 then
+            if self.active_agent[i][step][agent] == 2 and step > 1 then
                 range[i] = { { i }, { 1, bound } }
             else
                 range[i] = { { i }, { 1 } }
@@ -102,7 +102,6 @@ end
 
 function Lever:getCommLimited(step, i)
     if self.opt.game_comm_limited then
-	print('getCommLimited')
 
         local range = {}
 
@@ -123,7 +122,6 @@ function Lever:getCommLimited(step, i)
 end
 
 function Lever:getReward(a_t)
-    print('getReward')
     for b = 1, self.opt.bs do
         if (a_t[b][1] == 2 and a_t[b][2] == 2) then -- both did pull
                 self.reward[b] = self.reward_all_live
@@ -143,6 +141,7 @@ function Lever:step(a_t)
     -- Get rewards
     local reward, terminal = self:getReward(a_t)
 
+
     -- Make step
     self.step_counter = self.step_counter + 1
 
@@ -151,7 +150,6 @@ end
 
 
 function Lever:getState()
-    print('getState')
     local state = {}
 
     for agent = 1, self.opt.game_nagents do

@@ -186,11 +186,12 @@ return function(opt)
             -- God strategy
             local r_god = 0
             for b = 1, opt.bs do
-                local cPull = game.correctPulls[b]
+                local cPull = 2*game.correctPulls[b]
                 r_god = r_god + game.reward_all_live * cPull
             end
             stats.test_god[test_idx] = r_god / opt.bs
         end
+
 
         -- Keep stats
         if e == opt.step then
