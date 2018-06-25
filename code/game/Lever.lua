@@ -44,6 +44,9 @@ function Lever:reset()
     -- Reset rewards
     self.reward = torch.zeros(self.opt.bs, self.opt.game_nagents)
 
+    --Reset correctPulls
+    self.correctPulls = torch.zeros(self.opt.bs)
+
     -- Reached end
     self.terminal = torch.zeros(self.opt.bs)
 
@@ -51,12 +54,16 @@ function Lever:reset()
     self.step_counter = 1
 
     -- Who is in
+    print(self.opt.nsteps)
     self.active_agent = torch.zeros(self.opt.bs, self.opt.nsteps, self.opt.game_nagents)
     for b = 1, self.opt.bs do
         for step = 1, self.opt.nsteps do
-		for agent = 1, self.opt.game_nagents do
-            		self.active_agent[{ { b }, { step } , { agent } }] = torch.random(1, 2)
-		end
+		    for agent = 1, self.opt.game_nagents do
+            	self.active_agent[{ { b }, { step } , { agent } }] = torch.random(1, 2)
+            end
+            if (self.active_agent[{ {b}, {step}, {1} }] == 2 and self.active_agent[{ {b}, {step}, {2} }] == 2) and (step > 1) then
+                self.correctPulls[b] = self.correctPulls[b] + 1
+            end
         end
     end
 
@@ -64,6 +71,7 @@ function Lever:reset()
 end
 
 function Lever:getActionRange(step, agent)
+    print('getActionRange')
     local range = {}
     if self.opt.model_dial == 1 then           
         local bound = self.opt.game_action_space
@@ -94,6 +102,7 @@ end
 
 function Lever:getCommLimited(step, i)
     if self.opt.game_comm_limited then
+	print('getCommLimited')
 
         local range = {}
 
@@ -142,6 +151,7 @@ end
 
 
 function Lever:getState()
+    print('getState')
     local state = {}
 
     for agent = 1, self.opt.game_nagents do
