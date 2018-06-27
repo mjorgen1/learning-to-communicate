@@ -326,11 +326,13 @@ local function run_episode(opt, game, model, agent, test_mode)
 
             --Print the communication for each agent
             if test_mode then
-                print("Test_mode is " .. (test_mode and 'true' or 'false') .. " and this is the comm for agent".. i)
-                print(comm[1]) 
-            elseif not test_mode then
-                print("Test_mode is " .. (test_mode and 'true' or 'false') .. " and this is the comm for agent".. i)
-                print(comm[1]) 
+                print("\n")
+                print("Agent " .. i .. "'s Current state: " .. episode[step].s_t[i][1])
+                print("The comm for agent".. i)
+                print(comm[1][1]) 
+            --elseif not test_mode then
+            --    print("Test_mode is " .. (test_mode and 'true' or 'false') .. " and this is the comm for agent".. i)
+            --    print(comm[1]) 
             end
 
             -- Pick an action (epsilon-greedy)
@@ -384,7 +386,7 @@ local function run_episode(opt, game, model, agent, test_mode)
             episode[step].a_t[{ {}, { i } }] = max_a:type(opt.dtype)
             if test_mode then --prints out the actions for the test mode
                 print("The action for agent " .. i .. " is ")
-                print(episode[step].a_t[{ {1}, { i } }])
+                print(episode[step].a_t[1][i])
             end
             if opt.model_dial == 0 and opt.game_comm_bits > 0 then
                 episode[step].a_comm_t[{ {}, { i } }] = max_a_comm:type(opt.dtype)
@@ -427,10 +429,10 @@ local function run_episode(opt, game, model, agent, test_mode)
                                 local a_range = agent[i].range[{ action_range[b][2] }]
                                 local a_idx = torch.random(a_range:nElement())
                                 episode[step].a_t[b][i] = agent[i].range[{ action_range[b][2] }][a_idx]
-                                if b == 1 then --if on first batch for test phase print out actions for the agents
-                                    print("When testmode " .. (test_mode and 'true' or 'false') .. " the action for agent " .. i .. " is ")
-                                    print(episode[step].a_t[b][i])
-                                end
+                                --if b == 1 then --if on first batch for test phase print out actions for the agents
+                                --    print("When testmode " .. (test_mode and 'true' or 'false') .. " the action for agent " .. i .. " is ")
+                                --    print(episode[step].a_t[b][i])
+                                --end
                             else
                                 episode[step].a_t[b][i] = torch.random(q_t[b]:size(1))
                             end
