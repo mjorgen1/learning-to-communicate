@@ -329,7 +329,7 @@ local function run_episode(opt, game, model, agent, test_mode)
                 print("\n")
                 print("Agent " .. i .. "'s Current state: " .. episode[step].s_t[i][1])
                 print("The comm for agent".. i)
-                print(comm[1][1]) 
+                print(comm[1]) 
             --elseif not test_mode then
             --    print("Test_mode is " .. (test_mode and 'true' or 'false') .. " and this is the comm for agent".. i)
             --    print(comm[1]) 
