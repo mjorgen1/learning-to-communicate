@@ -324,6 +324,15 @@ local function run_episode(opt, game, model, agent, test_mode)
                 q_t, comm = DRU(q_t, test_mode)
             end
 
+            --Print the communication for each agent
+            if test_mode then
+                print("Test_mode is " .. (test_mode and 'true' or 'false') .. " and this is the comm for agent".. i)
+                print(comm[1]) 
+            elseif not test_mode then
+                print("Test_mode is " .. (test_mode and 'true' or 'false') .. " and this is the comm for agent".. i)
+                print(comm[1]) 
+            end
+
             -- Pick an action (epsilon-greedy)
             local action_range, action_range_comm
             local max_value, max_a, max_a_comm
@@ -373,6 +382,10 @@ local function run_episode(opt, game, model, agent, test_mode)
 
             -- Store actions
             episode[step].a_t[{ {}, { i } }] = max_a:type(opt.dtype)
+            if test_mode then --prints out the actions for the test mode
+                print("The action for agent " .. i .. " is ")
+                print(episode[step].a_t[{ {1}, { i } }])
+            end
             if opt.model_dial == 0 and opt.game_comm_bits > 0 then
                 episode[step].a_comm_t[{ {}, { i } }] = max_a_comm:type(opt.dtype)
             end
@@ -414,6 +427,10 @@ local function run_episode(opt, game, model, agent, test_mode)
                                 local a_range = agent[i].range[{ action_range[b][2] }]
                                 local a_idx = torch.random(a_range:nElement())
                                 episode[step].a_t[b][i] = agent[i].range[{ action_range[b][2] }][a_idx]
+                                if b == 1 then --if on first batch for test phase print out actions for the agents
+                                    print("When testmode " .. (test_mode and 'true' or 'false') .. " the action for agent " .. i .. " is ")
+                                    print(episode[step].a_t[b][i])
+                                end
                             else
                                 episode[step].a_t[b][i] = torch.random(q_t[b]:size(1))
                             end
@@ -607,6 +624,9 @@ for e = 1, opt.nepisodes do
 
     -- Model training
     model.training(model.agent)
+
+    --Print which epoch the run is on
+    print("Current epoch: " .. e)
 
     -- Run episode
     episode, agent = run_episode(opt, game, model, agent)
