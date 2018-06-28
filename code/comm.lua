@@ -813,7 +813,8 @@ for e = 1, opt.nepisodes do
             stats.grad_norm,
             stats.te_avg * opt.step,
             torch.toc(beginning_time) / 60)
-
+	print(episode.r)
+	print(stats.test_god)
         collectgarbage()
     end
 
