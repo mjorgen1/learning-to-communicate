@@ -55,15 +55,16 @@ function Lever:reset()
 
     -- Who is in
     self.active_agent = torch.zeros(self.opt.bs, self.opt.nsteps, self.opt.game_nagents)
-   local two = torch.zeros(1)
-    two[1] = 2
+
     for b = 1, self.opt.bs do
         for step = 1, self.opt.nsteps do
-	    for agent = 1, self.opt.game_nagents do
-            	self.active_agent[{ { b }, { step } , { agent } }] = torch.random(1, 2)
+	        for agent = 1, self.opt.game_nagents do
+                self.active_agent[{ { b }, { step } , { agent } }] = torch.random(1, 2)
             end
-            if (self.active_agent[b][step][1] == 2 and self.active_agent[b][step][2] == 2) and (step > 1) then
-                self.correctPulls[b] = self.correctPulls[b] + 1
+            for i = 1, self.opt.game_nagents do
+                if(self.active_agent[b][step][i] == 2) then
+                    self.correctPulls[b] = self.correctPulls[b] + 1
+                end
             end
         end
     end
@@ -107,11 +108,9 @@ function Lever:getCommLimited(step, i)
 
         -- Get range per batch
         for b = 1, self.opt.bs do
-            if step > 1 and i == 1 then
-                range[b] = { 2, {} }
-            elseif step > 1 and i == 2 then
-                range[b] = { 1, {} }
-	    else
+            if step > 1 then
+                range[b] = {{1, self.opt.game_nagents}, {}}
+            else
                 range[b] = 0
             end
         end
@@ -123,11 +122,20 @@ end
 
 function Lever:getReward(a_t)
     for b = 1, self.opt.bs do
-        if (a_t[b][1] == 2 and a_t[b][2] == 2) then -- both did pull
-                self.reward[b] = self.reward_all_live
-        elseif (a_t[b][1] ~= a_t[b][2]) then
-                self.reward[b] = self.reward_all_die
-	end
+        won = false 
+        for i = 1, self.opt.game_nagents do
+            if(a_t[b][1] == 2) then
+                won = true
+            else
+                won = false
+                break
+            end
+        end
+        if won then
+            self.reward[b] = self.reward_all_live
+        else
+            self.reward[b] = self.reward_all_die
+	    end 
         if self.step_counter == self.opt.nsteps and self.terminal[b] == 0 then
             self.terminal[b] = 1
         end
@@ -157,9 +165,9 @@ function Lever:getState()
 
         for b = 1, self.opt.bs do
 	    if (self.step_counter == self.opt.nsteps) then
-		state[agent][{ { b } }] = 2
+		    state[agent][{ { b } }] = 2
 	    else
-                state[agent][{ { b } }] = self.active_agent[b][self.step_counter+1][agent]
+            state[agent][{ { b } }] = self.active_agent[b][self.step_counter+1][agent]
 	    end
         end
     end
