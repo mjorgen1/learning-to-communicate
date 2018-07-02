@@ -44,22 +44,41 @@ function SimplePlan:reset()
     -- Reset rewards
     self.reward = torch.zeros(self.opt.bs, self.opt.game_nagents)
 
+    --Reset correctPulls
+    self.correctPulls = torch.zeros(self.opt.bs)
+
     -- Reached end
     self.terminal = torch.zeros(self.opt.bs)
 
     -- Step counter
     self.step_counter = 1
 
+    -- Who is in
+    self.active_agent = torch.zeros(self.opt.bs, self.opt.nsteps, self.opt.game_nagents)
+
     -- Agent positions
     self.agent_pos = torch.zeros(self.opt.bs,self.opt.game_nagents)
 
-    -- Whos lever is at which position? 
-    self.lever_pos = torch.zeros(self.opt.bs, self.opt.game_nagents)
+    -- Whos SimplePlan is at which position? 
+    self.SimplePlan_pos = torch.zeros(self.opt.bs, self.opt.game_nagents)
     for b = 1, self.opt.bs do
 	for agent = 1, self.opt.game_nagents do
-            self.lever_pos[{ { b }, { agent } }] = torch.random(1,self.opt.nsteps-1)
+            self.SimplePlan_pos[{ { b }, { agent } }] = torch.random(1,self.opt.nsteps-1)
         end
 
+    end
+
+    for b = 1, self.opt.bs do
+        for step = 1, self.opt.nsteps do
+	        for agent = 1, self.opt.game_nagents do
+                self.active_agent[{ { b }, { step } , { agent } }] = torch.random(1, 2)
+            end
+            for i = 1, self.opt.game_nagents do
+                if(self.active_agent[b][step][i] == 2) then
+                    self.correctPulls[b] = self.correctPulls[b] + 1
+                end
+            end
+        end
     end
 
     return self
@@ -71,10 +90,10 @@ function SimplePlan:getActionRange(step, agent)
         local bound = self.opt.game_action_space
 
         for i = 1, self.opt.bs do
-            if self.agent_pos[i][agent] == self.lever_pos[i][agent] then
+            if self.agent_pos[i][agent] == self.SimplePlan_pos[i][agent] then
                 range[i] = { { i }, { 1, bound } }
             else
-                range[i] = { { i }, { 1, bound-1 } }
+                range[i] = { { i }, { 1 , bound -1} }
             end
         end
         return range
@@ -96,9 +115,7 @@ end
 
 function SimplePlan:getCommLimited(step, i)
     if self.opt.game_comm_limited then
-	print('for agent '..i)
-	print(self.agent_pos[1])
-	print(self.agent_pos[1]:sum(1)[1])
+
         local range = {}
 
         -- Get range per batch
@@ -113,9 +130,8 @@ function SimplePlan:getCommLimited(step, i)
                 end
 	    else
                 range[b] = 0
-            end
+	    end
         end
-	print(range[1])
         return range
     else
         return nil
@@ -146,7 +162,7 @@ function SimplePlan:step(a_t)
 
     -- Make step
     self.step_counter = self.step_counter + 1
-    
+
     for b = 1, self.opt.bs do
         for agent = 1, self.opt.game_nagents do
 
@@ -154,8 +170,10 @@ function SimplePlan:step(a_t)
 
 	    if a_t[b][agent] == 2 then
 		movement = 1
-	    elseif a_t[b][agent] == 3 then
+		--print(agent .. ' moved forward')
+	    elseif a_t[b][agent] == 3 and self.agent_pos[b][agent] > 0 then
 		movement = -1
+		--print(agent .. ' moved backward')
 	    end
 
             self.agent_pos[b][agent] = self.agent_pos[b][agent] + movement
@@ -170,14 +188,17 @@ function SimplePlan:getState()
     local state = {}
 
     for agent = 1, self.opt.game_nagents do
-        state[agent] = torch.Tensor(self.opt.bs)
+        state[agent] = torch.Tensor(self.opt.bs,2)
 
         for b = 1, self.opt.bs do
 	    if (self.agent_pos[b][agent] == 0) then
-		state[agent][{ { b } }] = self.lever_pos[b][agent]
+		state[agent][b][1] = 1
+		state[agent][b][2] = 1
 	    else
-                state[agent][{ { b } }] = self.agent_pos[b][agent]
+		state[agent][b][1] = 1
+		state[agent][b][2] = 1
 	    end
+	    --print(self.agent_pos[b][agent])
         end
     end
 

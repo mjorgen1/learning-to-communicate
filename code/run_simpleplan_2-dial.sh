@@ -19,4 +19,4 @@ th comm.lua \
 -step 100 \
 -step_test 10 \
 -step_target 100 \
--cuda 1
+-cuda 0
