@@ -358,6 +358,22 @@ return function(opt)
         local model = nn.gModule(model_inputs, model_outputs)
 
         return model:type(opt.dtype)
+	print('model_input' .. \n)
+	print(model_input)
+	print('model_state' .. \n)
+	print(model_state)
+	print('model_out' .. \n)
+	print(model_out)
+	print('model_comm' .. \n)
+	print(model_comm)
+	print('model_inputs' .. \n)
+	print(model_inputs)
+	print('model_outputs' .. \n)
+	print(model_outputs)
+	print('proc_input' .. \n)
+	print(proc_input)
+	print('proc_out' .. \n)
+	print(proc_out)
     end
 
     -- Create model

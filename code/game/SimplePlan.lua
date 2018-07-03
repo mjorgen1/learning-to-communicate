@@ -188,15 +188,13 @@ function SimplePlan:getState()
     local state = {}
 
     for agent = 1, self.opt.game_nagents do
-        state[agent] = torch.Tensor(self.opt.bs,2)
+        state[agent] = torch.Tensor(self.opt.bs)
 
         for b = 1, self.opt.bs do
 	    if (self.agent_pos[b][agent] == 0) then
-		state[agent][b][1] = 1
-		state[agent][b][2] = 1
+		state[agent][{{b}}]=2
 	    else
-		state[agent][b][1] = 1
-		state[agent][b][2] = 1
+		state[agent][{{b}}]=1
 	    end
 	    --print(self.agent_pos[b][agent])
         end
