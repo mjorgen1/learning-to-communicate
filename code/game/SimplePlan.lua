@@ -34,6 +34,7 @@ function SimplePlan:__init(opt)
     -- Rewards
     self.reward_all_live = 1 + self.opt.game_reward_shift
     self.reward_all_die = -1 + self.opt.game_reward_shift
+    self.reward_small_off = -0.2
 
     -- Spawn new game
     self:reset()
@@ -53,17 +54,20 @@ function SimplePlan:reset()
     -- Step counter
     self.step_counter = 1
 
+    -- Was one lever pulled
+    self.pulled_lever = torch.zeros(self.opt.bs, self.opt.game_nagents)
+
     -- Who is in
     self.active_agent = torch.zeros(self.opt.bs, self.opt.nsteps, self.opt.game_nagents)
 
     -- Agent positions
-    self.agent_pos = torch.zeros(self.opt.bs,self.opt.game_nagents)
+    self.agent_pos = torch.ones(self.opt.bs,self.opt.game_nagents)
 
     -- Whos SimplePlan is at which position? 
-    self.SimplePlan_pos = torch.zeros(self.opt.bs, self.opt.game_nagents)
+    self.lever_pos = torch.zeros(self.opt.bs, self.opt.game_nagents)
     for b = 1, self.opt.bs do
 	for agent = 1, self.opt.game_nagents do
-            self.SimplePlan_pos[{ { b }, { agent } }] = torch.random(1,self.opt.nsteps-1)
+            self.lever_pos[{ { b }, { agent } }] = torch.random(2,self.opt.nsteps-2)
         end
 
     end
@@ -90,7 +94,7 @@ function SimplePlan:getActionRange(step, agent)
         local bound = self.opt.game_action_space
 
         for i = 1, self.opt.bs do
-            if self.agent_pos[i][agent] == self.SimplePlan_pos[i][agent] then
+            if self.agent_pos[i][agent] == self.lever_pos[i][agent] then
                 range[i] = { { i }, { 1, bound } }
             else
                 range[i] = { { i }, { 1 , bound -1} }
@@ -126,7 +130,7 @@ function SimplePlan:getCommLimited(step, i)
                 elseif step > 1 and i == 2 then
                     range[b] = { 1, {} }
 	        else
-                range[b] = 0
+                    range[b] = 0
                 end
 	    else
                 range[b] = 0
@@ -140,16 +144,33 @@ end
 
 function SimplePlan:getReward(a_t)
     for b = 1, self.opt.bs do
-        if self.terminal[b] ~= 1 and (a_t[b][1] == 4 and a_t[b][2] == 4) then -- both did pull
+
+        if self.terminal[b] == 0 and self.pulled_lever[b]:sum(1)[1] == 0 then -- noone pulled by now
+
+	    if (a_t[b][1] == 4 and a_t[b][2] == 4) then -- both did pull
                 self.reward[b] = self.reward_all_live
 		self.terminal[b] = 1
-        elseif self.terminal[b] ~= 1 and (a_t[b][1] == 4 and a_t[b][2] ~= 4) or (a_t[b][1] ~= 4 and a_t[b][2] == 4) then
-                self.reward[b] = self.reward_all_die
+	    elseif (a_t[b][1] == 4 and a_t[b][2] ~= 4) then -- agent 1 did pull
+		self.reward[b] = self.reward_all_live
+		self.pulled_lever[b][1] = 1
+	    elseif (a_t[b][1] ~= 4 and a_t[b][2] == 4) then -- agent 2 did pull
+		self.reward[b] = self.reward_all_live
+		self.pulled_lever[b][2] = 1
+	    end
+
+        elseif self.terminal[b] == 0 and self.pulled_lever[b]:sum(1)[1] == 1 then -- one pulled by now
+
+	    if (self.pulled_lever[b][1] == 1 and a_t[b][2] == 4) or (a_t[b][1] == 4 and self.pulled_lever[b][2] == 1) then -- both did pull
 		self.terminal[b] = 1
+	    else
+		self.reward[b] = self.reward_small_off
+	    end
+
 	end
         if self.step_counter == self.opt.nsteps and self.terminal[b] == 0 then
             self.terminal[b] = 1
         end
+
     end
     return self.reward:clone(), self.terminal:clone()
 end
@@ -171,7 +192,7 @@ function SimplePlan:step(a_t)
 	    if a_t[b][agent] == 2 then
 		movement = 1
 		--print(agent .. ' moved forward')
-	    elseif a_t[b][agent] == 3 and self.agent_pos[b][agent] > 0 then
+	    elseif a_t[b][agent] == 3 and self.agent_pos[b][agent] > 1 then
 		movement = -1
 		--print(agent .. ' moved backward')
 	    end
@@ -191,10 +212,10 @@ function SimplePlan:getState()
         state[agent] = torch.Tensor(self.opt.bs)
 
         for b = 1, self.opt.bs do
-	    if (self.agent_pos[b][agent] == 0) then
-		state[agent][{{b}}]=2
+	    if (self.step_counter == 1) then
+		state[agent][{{b}}]= self.lever_pos[b][agent]
 	    else
-		state[agent][{{b}}]=1
+		state[agent][{{b}}]= self.agent_pos[b][agent]
 	    end
 	    --print(self.agent_pos[b][agent])
         end

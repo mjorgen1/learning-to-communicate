@@ -274,7 +274,15 @@ local function run_episode(opt, game, model, agent, test_mode)
                             comm_lim[{ { b } }] = comm[{ { b }, unpack(comm_limited[b]) }]
                         end
                     end
+
                     table.insert(agent[i].input[step], comm_lim)
+
+		    if test_mode then
+                	print("\n")
+                	print("The comm sent to agent".. i)
+	                print(comm_lim[1])
+
+		    end
                 else
                     -- zero out own communication if not action aware
                     comm[{ {}, { i } }]:zero()
@@ -326,10 +334,7 @@ local function run_episode(opt, game, model, agent, test_mode)
 
             --Print the communication for each agent
             if test_mode then
-                print("\n")
                 print("Agent " .. i .. "'s Current state: " .. episode[step].s_t[i][1])
-                print("The comm for agent".. i)
-                print(comm[1]) 
             --elseif not test_mode then
             --    print("Test_mode is " .. (test_mode and 'true' or 'false') .. " and this is the comm for agent".. i)
             --    print(comm[1]) 
@@ -465,7 +470,12 @@ local function run_episode(opt, game, model, agent, test_mode)
 
         -- Compute reward for current state-action pair
         episode[step].r_t, episode[step].terminal = game:step(episode[step].a_t)
-
+	
+	if test_mode then
+	    print('reward achieved: ')
+	    print(episode[step].r_t[1])
+	    print('terminated: '.. episode[step].terminal[1])
+	end
 
         -- Accumulate steps (not for +1 step)
         if step <= opt.nsteps then
@@ -835,8 +845,6 @@ for e = 1, opt.nepisodes do
             stats.grad_norm,
             stats.te_avg * opt.step,
             torch.toc(beginning_time) / 60)
-	print(episode.r)
-	print(stats.test_god)
         collectgarbage()
     end
 

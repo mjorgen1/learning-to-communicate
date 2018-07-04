@@ -4,7 +4,7 @@ th comm.lua \
 -game_nagents 2 \
 -game_action_space 4 \
 -game_comm_limited 1 \
--game_comm_bits 1 \
+-game_comm_bits 3 \
 -game_comm_sigma 2 \
 -nsteps 6 \
 -gamma 1 \

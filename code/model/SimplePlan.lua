@@ -186,7 +186,7 @@ return function(opt)
             -- God strategy
             local r_god = 0
             for b = 1, opt.bs do
-                r_god = r_god + game.reward_all_live
+                r_god = r_god + 2*game.reward_all_live
             end
             stats.test_god[test_idx] = r_god / opt.bs
         end
@@ -237,7 +237,7 @@ return function(opt)
         -- if opt.model_bn == 1 then model_input:add(nn.BatchNormalization(opt.model_rnn_size)) end
 
         local model_state = nn.Sequential()
-        model_state:add(nn.LookupTable(2, opt.model_rnn_size))
+        model_state:add(nn.LookupTable(opt.nsteps+1, opt.model_rnn_size))
 
         -- RNN
         local model_rnn
