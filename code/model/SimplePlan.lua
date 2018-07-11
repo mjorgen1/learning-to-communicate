@@ -356,7 +356,9 @@ return function(opt)
         nngraph.annotateNodes()
 
         local model = nn.gModule(model_inputs, model_outputs)
-
+	
+	print('in_rnn_state')
+	print(in_rnn_state)
 	print('model_input')
 	print(model_input)
 	print('model_state')

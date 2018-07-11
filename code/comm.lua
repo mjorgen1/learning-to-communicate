@@ -199,7 +199,7 @@ local stats = {
 local replay = {}
 
 -- Run episode
-local function run_episode(opt, game, model, agent, test_mode)
+local function run_episode(opt, game, model, agent, e, test_mode)
 
     -- Test mode
     test_mode = test_mode or false
@@ -260,6 +260,7 @@ local function run_episode(opt, game, model, agent, test_mode)
                 agent[i].state[step - 1]
             }
 
+
             -- Communication enabled
             if opt.game_comm_bits > 0 and opt.game_nagents > 1 then
                 local comm_limited = game:getCommLimited(step, i)
@@ -289,6 +290,7 @@ local function run_episode(opt, game, model, agent, test_mode)
                     table.insert(agent[i].input[step], comm)
                 end
             end
+
 
             -- Last action enabled
             if opt.model_action_aware == 1 then
@@ -322,10 +324,11 @@ local function run_episode(opt, game, model, agent, test_mode)
                 end
             end
 
+
             -- Compute Q values
             local comm, state, q_t
             agent[i].state[step], q_t = unpack(model.agent[model.id(step, i)]:forward(agent[i].input[step]))
-
+	    --print(agent[i].input[step])
 
             -- If dial split out the comm values from q values
             if opt.model_dial == 1 then
@@ -469,7 +472,7 @@ local function run_episode(opt, game, model, agent, test_mode)
         end
 
         -- Compute reward for current state-action pair
-        episode[step].r_t, episode[step].terminal = game:step(episode[step].a_t)
+        episode[step].r_t, episode[step].terminal = game:step(episode[step].a_t,e)
 	
 	if test_mode then
 	    print('reward achieved: ')
@@ -641,7 +644,7 @@ for e = 1, opt.nepisodes do
     print("Current epoch: " .. e)
 
     -- Run episode
-    episode, agent = run_episode(opt, game, model, agent)
+    episode, agent = run_episode(opt, game, model, agent, e)
 
     -- Rewards stats
     stats.train_r[(e - 1) % opt.step + 1] = episode.r:mean(1)
@@ -800,7 +803,7 @@ for e = 1, opt.nepisodes do
     if e % opt.step_test == 0 then
         local test_idx = (e / opt.step_test - 1) % (opt.step / opt.step_test) + 1
 
-        local episode, _ = run_episode(opt, game, model, agent, true)
+        local episode, _ = run_episode(opt, game, model, agent, e, true)
         stats.test_r[test_idx] = episode.r:mean(1)
         stats.steps[test_idx] = episode.steps:mean()
         stats.comm_per[test_idx] = episode.comm_count / (episode.comm_count + episode.non_comm_count)

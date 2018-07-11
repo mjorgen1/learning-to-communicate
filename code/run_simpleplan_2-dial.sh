@@ -13,9 +13,10 @@ th comm.lua \
 -model_know_share 1 \
 -model_action_aware 1 \
 -model_rnn_size 128 \
+-model_rnn 'lstm' \
 -bs 32 \
 -learningrate 0.0005 \
--nepisodes 5000 \
+-nepisodes 31250 \
 -step 100 \
 -step_test 10 \
 -step_target 100 \

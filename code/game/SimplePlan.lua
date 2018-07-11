@@ -36,6 +36,8 @@ function SimplePlan:__init(opt)
     self.reward_all_die = -1 + self.opt.game_reward_shift
     self.reward_small_off = -0.2
 
+    self.reward_option = 'easy' -- 'time-changing' 'optimisable'
+
     -- Spawn new game
     self:reset()
 end
@@ -93,23 +95,23 @@ function SimplePlan:getActionRange(step, agent)
     if self.opt.model_dial == 1 then           
         local bound = self.opt.game_action_space
 
-        for i = 1, self.opt.bs do
-            if self.agent_pos[i][agent] == self.lever_pos[i][agent] then
-                range[i] = { { i }, { 1, bound } }
+        for b = 1, self.opt.bs do
+            if self.agent_pos[b][agent] == self.lever_pos[b][agent] then
+                range[b] = { { b }, { 1, bound } }
             else
-                range[i] = { { i }, { 1 , bound -1} }
+                range[b] = { { b }, { 1 , bound -1} }
             end
         end
         return range
     else					--the rial option was not updated to fit the SimplePlan game yet
         local comm_range = {}
-        for i = 1, self.opt.bs do
-            if self.active_agent[i][step] == agent then
-                range[i] = { { i }, { 1, self.opt.game_action_space } }
-                comm_range[i] = { { i }, { self.opt.game_action_space + 1, self.opt.game_action_space_total } }
+        for b = 1, self.opt.bs do
+            if self.active_agent[b][step] == agent then
+                range[b] = { { b }, { 1, self.opt.game_action_space } }
+                comm_range[b] = { { b }, { self.opt.game_action_space + 1, self.opt.game_action_space_total } }
             else
-                range[i] = { { i }, { 1 } }
-                comm_range[i] = { { i }, { 0, 0 } }
+                range[b] = { { b }, { 1 } }
+                comm_range[b] = { { b }, { 0, 0 } }
             end
         end
         return range, comm_range
@@ -124,7 +126,7 @@ function SimplePlan:getCommLimited(step, i)
 
         -- Get range per batch
         for b = 1, self.opt.bs do
-            if self.agent_pos[b]:sum(1)[1] == 0 then
+            if self.agent_pos[b]:sum(1)[1] == 2 then
                 if step > 1 and i == 1 then
                     range[b] = { 2, {} }
                 elseif step > 1 and i == 2 then
@@ -142,31 +144,67 @@ function SimplePlan:getCommLimited(step, i)
     end
 end
 
-function SimplePlan:getReward(a_t)
+function SimplePlan:getReward(a_t,episode)
+    
+    self.reward = torch.zeros(self.opt.bs, self.opt.game_nagents)
+
     for b = 1, self.opt.bs do
+ 
+        if reward_option == 'easy' then
 
-        if self.terminal[b] == 0 and self.pulled_lever[b]:sum(1)[1] == 0 then -- noone pulled by now
-
-	    if (a_t[b][1] == 4 and a_t[b][2] == 4) then -- both did pull
+	    if self.terminal[b]==0 and (a_t[b][1] == 4 and a_t[b][2] == 4) then -- both did pull
                 self.reward[b] = self.reward_all_live
 		self.terminal[b] = 1
-	    elseif (a_t[b][1] == 4 and a_t[b][2] ~= 4) then -- agent 1 did pull
-		self.reward[b] = self.reward_all_live
-		self.pulled_lever[b][1] = 1
-	    elseif (a_t[b][1] ~= 4 and a_t[b][2] == 4) then -- agent 2 did pull
-		self.reward[b] = self.reward_all_live
-		self.pulled_lever[b][2] = 1
+	    elseif self.terminal[b]==0 and (a_t[b][1] == 4 or a_t[b][2] == 4) then
+		self.terminal[b] = 1
 	    end
 
-        elseif self.terminal[b] == 0 and self.pulled_lever[b]:sum(1)[1] == 1 then -- one pulled by now
+        elseif reward_option == 'time-changing' then
 
-	    if (self.pulled_lever[b][1] == 1 and a_t[b][2] == 4) or (a_t[b][1] == 4 and self.pulled_lever[b][2] == 1) then -- both did pull
-		self.terminal[b] = 1
+    	    --reward for staying in communication distance at the beginning of the episode, reduces over steps and episodes
+	    if self.terminal[b] == 0 and self.agent_pos[b]:sum(1)[1] == 2 and self.step_counter > 1 then
+	        self.reward[b] = 1/(self.step_counter^2)/(1 + episode/100)
+	        if b == 1 then print('reward for communication distance') end
+	    end
+
+	    --rewards for pulling the lever, without coordination. Decreases into negative values over episodes
+
+            if self.terminal[b] == 0 and self.pulled_lever[b]:sum(1)[1] == 0 then -- noone pulled by now
+
+	        if (a_t[b][1] == 4 and a_t[b][2] == 4) then -- both did pull
+                    self.reward[b] = self.reward_all_live
+		    self.terminal[b] = 1
+		    if b == 1 then print('reward for both pulled') end
+	        elseif (a_t[b][1] == 4 and a_t[b][2] ~= 4) then -- agent 1 did pull
+		    self.reward[b] = self.reward_all_live * 1/(1+episode/200) + self.reward_all_die * (1-1/(1+episode/200))
+		    self.pulled_lever[b][1] = 1
+		    if b == 1 then print('reward for agent 1 pulled') end
+	        elseif (a_t[b][1] ~= 4 and a_t[b][2] == 4) then -- agent 2 did pull
+		    self.reward[b] = self.reward_all_live * 1/(1+episode/200) + self.reward_all_die * (1-1/(1+episode/200))
+		    self.pulled_lever[b][2] = 1
+		    if b == 1 then print('reward for agent 2 pulled') end
+	        else
+		    if b == 1 then print('reward for none pulled') end
+	        end
+
+	    --reward for pulling the lever after the other, stops negative reward
+
+            elseif self.terminal[b] == 0 and self.pulled_lever[b]:sum(1)[1] == 1 then -- one pulled by now
+
+	        if (self.pulled_lever[b][1] == 1 and a_t[b][2] == 4) or (a_t[b][1] == 4 and self.pulled_lever[b][2] == 1) then -- both did pull
+		    self.terminal[b] = 1
+		    if b == 1 then print('reward for second pulled') end
+	        else
+		    self.reward[b] = self.reward_small_off * 1/(1+episode/200)
+		    if b == 1 then print('reward for waiting for second pulled') end
+	        end 
 	    else
-		self.reward[b] = self.reward_small_off
+		if b == 1 then print('something went wrong or terminated'..self.terminal[b] == 1) end
+
 	    end
 
 	end
+
         if self.step_counter == self.opt.nsteps and self.terminal[b] == 0 then
             self.terminal[b] = 1
         end
@@ -175,10 +213,10 @@ function SimplePlan:getReward(a_t)
     return self.reward:clone(), self.terminal:clone()
 end
 
-function SimplePlan:step(a_t)
+function SimplePlan:step(a_t,episode)
 
     -- Get rewards
-    local reward, terminal = self:getReward(a_t)
+    local reward, terminal = self:getReward(a_t,episode)
 
 
     -- Make step
