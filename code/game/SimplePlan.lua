@@ -120,7 +120,7 @@ end
 
 
 function SimplePlan:getCommLimited(step, i)
-    if self.opt.game_comm_limited then
+    if self.opt.game_comm_limited == 1 then
 
         local range = {}
 
@@ -140,7 +140,19 @@ function SimplePlan:getCommLimited(step, i)
         end
         return range
     else
-        return nil
+        local range = {}
+
+        -- Get range per batch
+        for b = 1, self.opt.bs do
+            if step > 1 and i == 1 then
+                range[b] = { 2, {} }
+            elseif step > 1 and i == 2 then
+                range[b] = { 1, {} }
+	    else
+                range[b] = 0
+            end
+        end
+        return range
     end
 end
 
@@ -150,16 +162,18 @@ function SimplePlan:getReward(a_t,episode)
 
     for b = 1, self.opt.bs do
  
-        if reward_option == 'easy' then
+        if self.reward_option == 'easy' then
 
 	    if self.terminal[b]==0 and (a_t[b][1] == 4 and a_t[b][2] == 4) then -- both did pull
                 self.reward[b] = self.reward_all_live
 		self.terminal[b] = 1
+		print('both pulled')
 	    elseif self.terminal[b]==0 and (a_t[b][1] == 4 or a_t[b][2] == 4) then
 		self.terminal[b] = 1
+		print('one pulled')
 	    end
 
-        elseif reward_option == 'time-changing' then
+        elseif selfreward_option == 'time-changing' then
 
     	    --reward for staying in communication distance at the beginning of the episode, reduces over steps and episodes
 	    if self.terminal[b] == 0 and self.agent_pos[b]:sum(1)[1] == 2 and self.step_counter > 1 then
