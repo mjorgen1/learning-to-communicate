@@ -9,12 +9,13 @@ local util = require 'include.util'
 local SimplePlan = class('SimplePlan')
 
 -- Actions
--- 1 = on
--- 2 = off
--- 3 = tell
--- 4* = none
+-- 1 = stay
+-- 2 = forward
+-- 3 = backward
+-- 4* = pull
 
 function SimplePlan:__init(opt)
+
     local opt_game = kwargs(_, {
         { 'game_action_space', type = 'int-pos', default = 2 },
         { 'game_reward_shift', type = 'int', default = 0 },
@@ -67,6 +68,7 @@ function SimplePlan:reset()
 
     -- Whos SimplePlan is at which position? 
     self.lever_pos = torch.zeros(self.opt.bs, self.opt.game_nagents)
+
     for b = 1, self.opt.bs do
 	for agent = 1, self.opt.game_nagents do
             self.lever_pos[{ { b }, { agent } }] = torch.random(2,4)
@@ -167,10 +169,10 @@ function SimplePlan:getReward(a_t,episode)
 	    if self.terminal[b]==0 and (a_t[b][1] == 4 and a_t[b][2] == 4) then -- both did pull
                 self.reward[b] = self.reward_all_live
 		self.terminal[b] = 1
-		--print('1')
+		print('both pulled')
 	    elseif self.terminal[b]==0 and (a_t[b][1] == 4 or a_t[b][2] == 4) then
 		self.terminal[b] = 1
-		--print('0')
+		print('one pulled')
 	    end
 
         elseif selfreward_option == 'time-changing' then
@@ -276,6 +278,45 @@ function SimplePlan:getState()
     end
 
     return state
+end
+
+function SimplePlan:immitateAction()
+    local step = self.step_counter
+    local pAction = {}
+
+    for b = 1, self.opt.bs do
+        for agent = 1, self.opt.game_nagents do
+
+            if (step == 1) then --if on first step, stay in place so comm occurs
+                pAction[b][agent] = 1 
+            elseif (step <= self.opt.nsteps) then
+                if (self.agent_pos[b][agent] < self.lever_pos[b][agent]) then --if agent is behind lever, move forward
+                    pAction[b][agent] = 2 
+                elseif (self.agent_pos[b][agent] > self.lever_pos[b][agent]) then --if agent is ahead of lever, move backward
+                    pAction[b][agent] = 3
+                elseif (self.agent_pos[b][agent] == self.lever_pos[b][agent]) then --if agent at lever, functionality only for 2 agents
+                    if (agent == 1) then
+                        if (self.agent_pos[b][2] == self.lever_pos[b][2]) then
+                            pAction[b][agent] = 4 --pull if the other agent is at its lever too
+                        else
+                            pAction[b][agent] = 1 --stay put
+                        end
+                    elseif (agent == 2) then
+                        if (self.agent_pos[b][1] == self.lever_pos[b][1]) then
+                            pAction[b][agent] = 4 --pull if the other agent is at its lever too
+                        else
+                            pAction[b][agent] = 1 --stay put
+                        end
+                    else
+                        print("the number of agents should only be 2, check opt")
+                    end
+                end
+            end
+
+        end
+    end
+
+    return pAction
 end
 
 return SimplePlan
