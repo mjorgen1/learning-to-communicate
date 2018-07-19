@@ -1,14 +1,14 @@
 #!/bin/bash
 th commWith2States.lua \
--game SimplePlan \
--game_nagents 2 \
+-game SingleLeverPlan \
+-game_nagents 1 \
 -game_action_space 4 \
 -game_comm_limited 0 \
--game_comm_bits 3 \
--game_comm_sigma 2 \
--nsteps 8 \
+-game_comm_bits 0 \
+-game_comm_sigma 1 \
+-nsteps 10 \
 -gamma 1 \
--model_dial 1 \
+-model_dial 0 \
 -model_bn 1 \
 -model_know_share 1 \
 -model_action_aware 1 \

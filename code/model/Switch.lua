@@ -189,8 +189,13 @@ return function(opt)
                 local has_been = game.has_been[{ { b }, { 1, opt.nsteps }, {} }]:sum(2):squeeze(2):gt(0):float():sum()
                 if has_been == opt.game_nagents then
                     r_god = r_god + game.reward_all_live
+		    print(1)
+		else
+		    print(0)
                 end
+		
             end
+
             stats.test_god[test_idx] = r_god / opt.bs
         end
 

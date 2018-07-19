@@ -6,7 +6,7 @@ local kwargs = require 'include.kwargs'
 local util = require 'include.util'
 
 
-local SimplePlan = class('SimplePlan')
+local SingleLeverPlan = class('SingleLeverPlan')
 
 -- Actions
 -- 1 = on
@@ -14,7 +14,7 @@ local SimplePlan = class('SimplePlan')
 -- 3 = tell
 -- 4* = none
 
-function SimplePlan:__init(opt)
+function SingleLeverPlan:__init(opt)
     local opt_game = kwargs(_, {
         { 'game_action_space', type = 'int-pos', default = 2 },
         { 'game_reward_shift', type = 'int', default = 0 },
@@ -42,7 +42,7 @@ function SimplePlan:__init(opt)
     self:reset()
 end
 
-function SimplePlan:reset()
+function SingleLeverPlan:reset()
 
     -- Reset rewards
     self.reward = torch.zeros(self.opt.bs, self.opt.game_nagents)
@@ -65,14 +65,15 @@ function SimplePlan:reset()
     -- Agent positions
     self.agent_pos = torch.ones(self.opt.bs,self.opt.game_nagents)
 
-    -- Whos SimplePlan is at which position? 
+    -- Whos Lever is at which position? 
     self.lever_pos = torch.zeros(self.opt.bs, self.opt.game_nagents)
     for b = 1, self.opt.bs do
 	for agent = 1, self.opt.game_nagents do
-            self.lever_pos[{ { b }, { agent } }] = torch.random(2,4)
+            self.lever_pos[{ { b }, { agent } }] = torch.random(2,6)
         end
 
     end
+
 
     for b = 1, self.opt.bs do
         for step = 1, self.opt.nsteps do
@@ -90,9 +91,10 @@ function SimplePlan:reset()
     return self
 end
 
-function SimplePlan:getActionRange(step, agent)
+function SingleLeverPlan:getActionRange(step, agent)
     local range = {}
-    if self.opt.model_dial == 1 then           
+    local comm_range = {}
+       
         local bound = self.opt.game_action_space
 
         for b = 1, self.opt.bs do
@@ -101,25 +103,14 @@ function SimplePlan:getActionRange(step, agent)
             else
                 range[b] = { { b }, { 1 , bound -1} }
             end
-        end
-        return range
-    else					--the rial option was not updated to fit the SimplePlan game yet
-        local comm_range = {}
-        for b = 1, self.opt.bs do
-            if self.active_agent[b][step] == agent then
-                range[b] = { { b }, { 1, self.opt.game_action_space } }
-                comm_range[b] = { { b }, { self.opt.game_action_space + 1, self.opt.game_action_space_total } }
-            else
-                range[b] = { { b }, { 1 } }
-                comm_range[b] = { { b }, { 0, 0 } }
-            end
-        end
+            comm_range[b] = { { b }, { 0, 0 } }
+	end
+
         return range, comm_range
-    end
 end
 
 
-function SimplePlan:getCommLimited(step, i)
+function SingleLeverPlan:getCommLimited(step, i)
     if self.opt.game_comm_limited == 1 then
 
         local range = {}
@@ -156,79 +147,28 @@ function SimplePlan:getCommLimited(step, i)
     end
 end
 
-function SimplePlan:getReward(a_t,episode)
+function SingleLeverPlan:getReward(a_t,episode)
     
     self.reward = torch.zeros(self.opt.bs, self.opt.game_nagents)
 
     for b = 1, self.opt.bs do
- 
-        if self.reward_option == 'easy' then
 
-	    if self.terminal[b]==0 and (a_t[b][1] == 4 and a_t[b][2] == 4) then -- both did pull
-                self.reward[b] = self.reward_all_live
-		self.terminal[b] = 1
-		--print('1')
-	    elseif self.terminal[b]==0 and (a_t[b][1] == 4 or a_t[b][2] == 4) then
-		self.terminal[b] = 1
-		--print('0')
-	    end
-
-        elseif selfreward_option == 'time-changing' then
-
-    	    --reward for staying in communication distance at the beginning of the episode, reduces over steps and episodes
-	    if self.terminal[b] == 0 and self.agent_pos[b]:sum(1)[1] == 2 and self.step_counter > 1 then
-	        self.reward[b] = 1/(self.step_counter^2)/(1 + episode/100)
-	        if b == 1 then print('reward for communication distance') end
-	    end
-
-	    --rewards for pulling the lever, without coordination. Decreases into negative values over episodes
-
-            if self.terminal[b] == 0 and self.pulled_lever[b]:sum(1)[1] == 0 then -- noone pulled by now
-
-	        if (a_t[b][1] == 4 and a_t[b][2] == 4) then -- both did pull
-                    self.reward[b] = self.reward_all_live
-		    self.terminal[b] = 1
-		    if b == 1 then print('reward for both pulled') end
-	        elseif (a_t[b][1] == 4 and a_t[b][2] ~= 4) then -- agent 1 did pull
-		    self.reward[b] = self.reward_all_live * 1/(1+episode/200) + self.reward_all_die * (1-1/(1+episode/200))
-		    self.pulled_lever[b][1] = 1
-		    if b == 1 then print('reward for agent 1 pulled') end
-	        elseif (a_t[b][1] ~= 4 and a_t[b][2] == 4) then -- agent 2 did pull
-		    self.reward[b] = self.reward_all_live * 1/(1+episode/200) + self.reward_all_die * (1-1/(1+episode/200))
-		    self.pulled_lever[b][2] = 1
-		    if b == 1 then print('reward for agent 2 pulled') end
-	        else
-		    if b == 1 then print('reward for none pulled') end
-	        end
-
-	    --reward for pulling the lever after the other, stops negative reward
-
-            elseif self.terminal[b] == 0 and self.pulled_lever[b]:sum(1)[1] == 1 then -- one pulled by now
-
-	        if (self.pulled_lever[b][1] == 1 and a_t[b][2] == 4) or (a_t[b][1] == 4 and self.pulled_lever[b][2] == 1) then -- both did pull
-		    self.terminal[b] = 1
-		    if b == 1 then print('reward for second pulled') end
-	        else
-		    self.reward[b] = self.reward_small_off * 1/(1+episode/200)
-		    if b == 1 then print('reward for waiting for second pulled') end
-	        end 
-	    else
-		if b == 1 then print('something went wrong or terminated'..self.terminal[b] == 1) end
-
-	    end
-
+	if self.terminal[b]==0 and a_t[b][1] == 4 then -- did pull
+            self.reward[b] = self.reward_all_live * 1/(self.step_counter - self.lever_pos[b][1] +1)
+	    self.terminal[b] = 1
+	    --print(self.reward[b][1] .. ' '.. self.lever_pos[b][1])
 	end
 
         if self.step_counter == self.opt.nsteps and self.terminal[b] == 0 then
             self.terminal[b] = 1
-	    --print('0')
+	    --print(0 .. ' '.. self.lever_pos[b][1])
         end
 
     end
     return self.reward:clone(), self.terminal:clone()
 end
 
-function SimplePlan:step(a_t,episode)
+function SingleLeverPlan:step(a_t,episode)
 
     -- Get rewards
     local reward, terminal = self:getReward(a_t,episode)
@@ -258,25 +198,25 @@ function SimplePlan:step(a_t,episode)
 end
 
 
-function SimplePlan:getState()
+function SingleLeverPlan:getState()
     local state = {}
 
     for agent = 1, self.opt.game_nagents do
         state[agent] = torch.Tensor(self.opt.bs,2)
 
         for b = 1, self.opt.bs do
---	    if (self.agent_pos[b][agent] == 1) then
+	    --if (self.agent_pos[b][agent] == 1) then
 		state[agent][{{b}, {1}}]= self.lever_pos[b][agent]
---	    else
---		state[agent][{{b}, {1}}]= 1	
---	    end
+	    --else
+		--state[agent][{{b}, {1}}]= 1	
+	    --end
 	    state[agent][{{b},{2}}]= self.agent_pos[b][agent]
-	    --print(self.agent_pos[b][agent])
+	    --print(agent ..' position: ' .. self.agent_pos[b][agent])
         end
     end
 
     return state
 end
 
-return SimplePlan
+return SingleLeverPlan
 

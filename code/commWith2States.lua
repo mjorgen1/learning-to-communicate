@@ -255,7 +255,8 @@ local function run_episode(opt, game, model, agent, e, test_mode)
         -- Iterate agents
         for i = 1, opt.game_nagents do
             agent[i].input[step] = {
-                episode[step].s_t[i][{{}}]:squeeze():type(opt.dtype),
+                episode[step].s_t[i][{{},{1}}]:squeeze():type(opt.dtype),
+                episode[step].s_t[i][{{},{2}}]:squeeze():type(opt.dtype),
                 agent[i].id,
                 agent[i].state[step - 1]
             }
@@ -279,9 +280,9 @@ local function run_episode(opt, game, model, agent, e, test_mode)
                     table.insert(agent[i].input[step], comm_lim)
 
 		    if test_mode then
-                	--print("\n")
-                	--print("The comm sent to agent".. i)
-	                --print(comm_lim[1])
+                	print("\n")
+                	print("The comm sent to agent".. i)
+	                print(comm_lim[1])
 
 		    end
                 else
@@ -328,6 +329,7 @@ local function run_episode(opt, game, model, agent, e, test_mode)
             local comm, state, q_t
             agent[i].state[step], q_t = unpack(model.agent[model.id(step, i)]:forward(agent[i].input[step]))
 
+
             -- If dial split out the comm values from q values
             if opt.model_dial == 1 then
                 q_t, comm = DRU(q_t, test_mode)
@@ -335,7 +337,8 @@ local function run_episode(opt, game, model, agent, e, test_mode)
 
             --Print the communication for each agent
             if test_mode then
-                --print("Agent " .. i .. "'s Current state: " .. episode[step].s_t[i][1])
+                print("Agent " .. i .. "'s Current state: " .. episode[step].s_t[i][1][1] .. ' ' .. episode[step].s_t[i][1][2] )
+		print(q_t[1]:view(1,-1))
             --elseif not test_mode then
             --    print("Test_mode is " .. (test_mode and 'true' or 'false') .. " and this is the comm for agent".. i)
             --    print(comm[1]) 
@@ -391,8 +394,8 @@ local function run_episode(opt, game, model, agent, e, test_mode)
             -- Store actions
             episode[step].a_t[{ {}, { i } }] = max_a:type(opt.dtype)
             if test_mode then --prints out the actions for the test mode
-                --print("The action for agent " .. i .. " is ")
-                --print(episode[step].a_t[1][i])
+                print("The action for agent " .. i .. " is ")
+                print(episode[step].a_t[1][i])
             end
             if opt.model_dial == 0 and opt.game_comm_bits > 0 then
                 episode[step].a_comm_t[{ {}, { i } }] = max_a_comm:type(opt.dtype)
@@ -473,9 +476,9 @@ local function run_episode(opt, game, model, agent, e, test_mode)
         episode[step].r_t, episode[step].terminal = game:step(episode[step].a_t,e)
 	
 	if test_mode then
-	   -- print('reward achieved: ')
-	   -- print(episode[step].r_t[1])
-	   -- print('terminated: '.. episode[step].terminal[1])
+	    print('reward achieved: ')
+	    print(episode[step].r_t[1])
+	    print('terminated: '.. episode[step].terminal[1])
 	end
 
         -- Accumulate steps (not for +1 step)
@@ -499,7 +502,7 @@ local function run_episode(opt, game, model, agent, e, test_mode)
         -- Target Network, for look-ahead
         if opt.model_target == 1 and not test_mode then
             for i = 1, opt.game_nagents do
-                local comm = agent[i].input[step][4]
+                local comm = agent[i].input[step][5]
 
                 if opt.game_comm_bits > 0 and opt.game_nagents > 1 and opt.model_dial == 1 then
                     local comm_limited = game:getCommLimited(step, i)
@@ -525,9 +528,10 @@ local function run_episode(opt, game, model, agent, e, test_mode)
                 agent[i].input_target[step] = {
                     agent[i].input[step][1],
                     agent[i].input[step][2],
+                    agent[i].input[step][3],
                     agent[i].state_target[step - 1],
                     comm,
-                    agent[i].input[step][5],
+                    agent[i].input[step][6],
                 }
 
                 -- Forward target
@@ -639,7 +643,7 @@ for e = 1, opt.nepisodes do
     model.training(model.agent)
 
     --Print which epoch the run is on
-    --print("Current epoch: " .. e)
+    print("Current epoch: " .. e)
 
     -- Run episode
     episode, agent = run_episode(opt, game, model, agent, e)
@@ -744,12 +748,12 @@ for e = 1, opt.nepisodes do
             })
 
             --'state' is the 3rd input, so we can extract d_state
-            agent[i].d_state[step_back] = grad[3]
+            agent[i].d_state[step_back] = grad[4]
 
             --For dial we need to write add the derivatives w/ respect to the incoming messages to the d_comm tracker
             if opt.model_dial == 1 then
                 local comm_limited = game:getCommLimited(step, i)
-                local comm_grad = grad[4]
+                local comm_grad = grad[5]
 
                 if comm_limited then
                     for b = 1, opt.bs do

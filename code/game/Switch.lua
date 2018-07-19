@@ -124,11 +124,14 @@ function Switch:getReward(a_t)
             local has_been = self.has_been[{ { b }, { 1, self.step_counter }, {} }]:sum(2):squeeze(2):gt(0):float():sum()
             if has_been == self.opt.game_nagents then
                 self.reward[b] = self.reward_all_live
+		--print(self.reward[b][1])
             else
                 self.reward[b] = self.reward_all_die
+		--print(self.reward[b][1])
             end
             self.terminal[b] = 1
         elseif self.step_counter == self.opt.nsteps and self.terminal[b] == 0 then
+	    --print(0)
             self.terminal[b] = 1
         end
     end
