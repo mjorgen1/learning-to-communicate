@@ -81,6 +81,8 @@ cmd:option('-game_comm_limited', 1, '')
 cmd:option('-game_comm_bits', 2, '')
 cmd:option('-game_comm_sigma', 0, '')
 cmd:option('-nsteps', 6, 'number of steps')
+-- SimplePlan
+cmd:option('-imitation_Learning', 0, 'imitation learning')
 
 cmd:text()
 
@@ -206,6 +208,15 @@ local function run_episode(opt, game, model, agent, e, test_mode)
 
     -- Reset game
     game:reset()
+    local im_learning = false
+    -- allow imitation learning every even numbered episodes
+    if(imitation_Learning == 1) then
+        if(e % 2 == 0) then
+            im_learning = true
+        else
+            im_learning = false
+        end
+    end
 
     -- Initialise episode
     local step = 1
@@ -280,9 +291,9 @@ local function run_episode(opt, game, model, agent, e, test_mode)
                     table.insert(agent[i].input[step], comm_lim)
 
 		    if test_mode then
-                	print("\n")
-                	print("The comm sent to agent".. i)
-	                print(comm_lim[1])
+                	--print("\n")
+                	--print("The comm sent to agent".. i)
+	                --print(comm_lim[1])
 
 		    end
                 else
@@ -337,8 +348,8 @@ local function run_episode(opt, game, model, agent, e, test_mode)
 
             --Print the communication for each agent
             if test_mode then
-                print("Agent " .. i .. "'s Current state: " .. episode[step].s_t[i][1][1] .. ' ' .. episode[step].s_t[i][1][2] )
-		print(q_t[1]:view(1,-1))
+                --print("Agent " .. i .. "'s Current state: " .. episode[step].s_t[i][1][1] .. ' ' .. episode[step].s_t[i][1][2] )
+                --print(q_t[1]:view(1,-1))
             --elseif not test_mode then
             --    print("Test_mode is " .. (test_mode and 'true' or 'false') .. " and this is the comm for agent".. i)
             --    print(comm[1]) 
@@ -394,8 +405,8 @@ local function run_episode(opt, game, model, agent, e, test_mode)
             -- Store actions
             episode[step].a_t[{ {}, { i } }] = max_a:type(opt.dtype)
             if test_mode then --prints out the actions for the test mode
-                print("The action for agent " .. i .. " is ")
-                print(episode[step].a_t[1][i])
+                --print("The action for agent " .. i .. " is ")
+                --print(episode[step].a_t[1][i])
             end
             if opt.model_dial == 0 and opt.game_comm_bits > 0 then
                 episode[step].a_comm_t[{ {}, { i } }] = max_a_comm:type(opt.dtype)
@@ -404,7 +415,7 @@ local function run_episode(opt, game, model, agent, e, test_mode)
             for b = 1, opt.bs do
 
                 -- Epsilon-greedy action picking
-                if not test_mode then
+                if not test_mode and not im_learning then
                     if opt.model_dial == 0 then
                         -- Random action
                         if torch.uniform() < opt.eps then
@@ -448,6 +459,11 @@ local function run_episode(opt, game, model, agent, e, test_mode)
                         end
                     end
                 end
+                if not test_mode and im_learning then
+                    local actions = game:imitateAction()
+                    --print(actions)
+                    episode[step].a_t[b][i] = actions[b][i]
+                end
 
                 -- If communication action populate channel
                 if step <= opt.nsteps then
@@ -476,9 +492,9 @@ local function run_episode(opt, game, model, agent, e, test_mode)
         episode[step].r_t, episode[step].terminal = game:step(episode[step].a_t,e)
 	
 	if test_mode then
-	    print('reward achieved: ')
-	    print(episode[step].r_t[1])
-	    print('terminated: '.. episode[step].terminal[1])
+	    --print('reward achieved: ')
+	    --print(episode[step].r_t[1])
+	    --print('terminated: '.. episode[step].terminal[1])
 	end
 
         -- Accumulate steps (not for +1 step)
@@ -643,7 +659,7 @@ for e = 1, opt.nepisodes do
     model.training(model.agent)
 
     --Print which epoch the run is on
-    print("Current epoch: " .. e)
+    --print("Current epoch: " .. e)
 
     -- Run episode
     episode, agent = run_episode(opt, game, model, agent, e)
