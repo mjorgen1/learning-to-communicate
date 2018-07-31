@@ -37,7 +37,7 @@ function SimplePlan:__init(opt)
     self.reward_all_die = -1 + self.opt.game_reward_shift
     self.reward_small_off = -0.2
 
-    self.reward_option = 'easy' -- 'time-changing' 'optimisable'
+    self.reward_option = 'optimisable' -- 'time-changing' 'easy'
 
     -- Spawn new game
     self:reset(1)
@@ -74,7 +74,7 @@ function SimplePlan:reset(episode)
 
     for b = 1, self.opt.bs do
 	for agent = 1, self.opt.game_nagents do
-	    self.lever_pos[{ { b }, { agent } }] = torch.random(1,4) --lever position 1 means, there is no lever
+	    self.lever_pos[{ { b }, { agent } }] = torch.random(2,4) --lever position 1 means, there is no lever
         end
 
     end
@@ -103,7 +103,9 @@ function SimplePlan:getActionRange(step, agent)
         for b = 1, self.opt.bs do
             if self.agent_pos[b][agent] == self.lever_pos[b][agent] and self.lever_pos[b][agent] ~= 1 then
                 range[b] = { { b }, { 1, bound } }
-            else
+            elseif self.step_counter == 1 then
+                range[b] = { { b }, { 1 , 1} }
+	    else
                 range[b] = { { b }, { 1 , bound -1} }
             end
         end
@@ -174,12 +176,26 @@ function SimplePlan:getReward(a_t,episode)
 		self.terminal[b] = 1
 		--print('both pulled')
 	    elseif self.terminal[b]==0 and (a_t[b][1] == 4 or a_t[b][2] == 4) then
-		self.reward[b] = self.reward_all_die
+		--self.reward[b] = self.reward_all_die
 		self.terminal[b] = 1
 		--print('one pulled')
 	    end
 
-        elseif selfreward_option == 'time-changing' then
+	elseif self.reward_option == 'optimisable' then
+
+	    if self.terminal[b]==0 and (a_t[b][1] == 4 and a_t[b][2] == 4) then -- both did pull
+		earliest = torch.max(self.lever_pos[b])
+                self.reward[b] = self.reward_all_live * 1/(self.step_counter-earliest)
+		self.terminal[b] = 1
+		--print('both pulled')
+	    elseif self.terminal[b]==0 and (a_t[b][1] == 4 or a_t[b][2] == 4) then
+		--self.reward[b] = self.reward_all_die
+		self.terminal[b] = 1
+		--print('one pulled')
+	    end
+
+
+        elseif self.reward_option == 'time-changing' then
 
     	    --reward for staying in communication distance at the beginning of the episode, reduces over steps and episodes
 	    if self.terminal[b] == 0 and self.agent_pos[b]:sum(1)[1] == 2 and self.step_counter > 1 then
@@ -196,11 +212,11 @@ function SimplePlan:getReward(a_t,episode)
 		    self.terminal[b] = 1
 		    --if b == 1 then print('reward for both pulled') end
 	        elseif (a_t[b][1] == 4 and a_t[b][2] ~= 4) then -- agent 1 did pull
-		    self.reward[b] = self.reward_all_live * 1/(1+episode/1000) + self.reward_all_die * (1-1/(1+episode/1000))
+		    self.reward[b] = self.reward_all_live * 1/(1+episode/2000) + self.reward_all_die * (1-1/(1+episode/2000))
 		    self.pulled_lever[b][1] = 1
 		    --if b == 1 then print('reward for agent 1 pulled') end
 	        elseif (a_t[b][1] ~= 4 and a_t[b][2] == 4) then -- agent 2 did pull
-		    self.reward[b] = self.reward_all_live * 1/(1+episode/1000) + self.reward_all_die * (1-1/(1+episode/1000))
+		    self.reward[b] = self.reward_all_live * 1/(1+episode/2000) + self.reward_all_die * (1-1/(1+episode/2000))
 		    self.pulled_lever[b][2] = 1
 		    --if b == 1 then print('reward for agent 2 pulled') end
 	        else
