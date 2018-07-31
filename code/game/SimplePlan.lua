@@ -194,7 +194,7 @@ function SimplePlan:getReward(a_t,episode)
     	    --reward for staying in communication distance at the beginning of the episode, reduces over steps and episodes
 	    if self.terminal[b] == 0 and self.agent_pos[b]:sum(1)[1] == 2 and self.step_counter > 1 then
 	        self.reward[b] = 1/(self.step_counter^2)/(1 + episode/100)
-	        if b == 1 then print('reward for communication distance') end
+	        --if b == 1 then print('reward for communication distance') end
 	    end
 
 	    --rewards for pulling the lever, without coordination. Decreases into negative values over episodes
@@ -204,17 +204,17 @@ function SimplePlan:getReward(a_t,episode)
 	        if (a_t[b][1] == 4 and a_t[b][2] == 4) then -- both did pull
                     self.reward[b] = self.reward_all_live
 		    self.terminal[b] = 1
-		    if b == 1 then print('reward for both pulled') end
+		    --if b == 1 then print('reward for both pulled') end
 	        elseif (a_t[b][1] == 4 and a_t[b][2] ~= 4) then -- agent 1 did pull
 		    self.reward[b] = self.reward_all_live * 1/(1+episode/200) + self.reward_all_die * (1-1/(1+episode/200))
 		    self.pulled_lever[b][1] = 1
-		    if b == 1 then print('reward for agent 1 pulled') end
+		    --if b == 1 then print('reward for agent 1 pulled') end
 	        elseif (a_t[b][1] ~= 4 and a_t[b][2] == 4) then -- agent 2 did pull
 		    self.reward[b] = self.reward_all_live * 1/(1+episode/200) + self.reward_all_die * (1-1/(1+episode/200))
 		    self.pulled_lever[b][2] = 1
-		    if b == 1 then print('reward for agent 2 pulled') end
+		    --if b == 1 then print('reward for agent 2 pulled') end
 	        else
-		    if b == 1 then print('reward for none pulled') end
+		    --if b == 1 then print('reward for none pulled') end
 	        end
 
 	    --reward for pulling the lever after the other, stops negative reward
@@ -223,10 +223,10 @@ function SimplePlan:getReward(a_t,episode)
 
 	        if (self.pulled_lever[b][1] == 1 and a_t[b][2] == 4) or (a_t[b][1] == 4 and self.pulled_lever[b][2] == 1) then -- both did pull
 		    self.terminal[b] = 1
-		    if b == 1 then print('reward for second pulled') end
+		    --if b == 1 then print('reward for second pulled') end
 	        else
 		    self.reward[b] = self.reward_small_off * 1/(1+episode/200)
-		    if b == 1 then print('reward for waiting for second pulled') end
+		    --if b == 1 then print('reward for waiting for second pulled') end
 	        end 
 	    else
 		if b == 1 then print('something went wrong or terminated'..self.terminal[b] == 1) end
@@ -294,9 +294,9 @@ function SimplePlan:getState()
     return state
 end
 
-function SimplePlan:immitateAction()
+function SimplePlan:imitateAction()
     local step = self.step_counter
-    local pAction = {}
+    local pAction = torch.zeros(self.opt.bs, self.opt.game_nagents):type(self.opt.dtype)
 
     for b = 1, self.opt.bs do
         for agent = 1, self.opt.game_nagents do
