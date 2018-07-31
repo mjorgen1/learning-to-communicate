@@ -74,18 +74,7 @@ function SimplePlan:reset(episode)
 
     for b = 1, self.opt.bs do
 	for agent = 1, self.opt.game_nagents do
-	    curr_chance = torch.random(1,episode)
-	    if episode >= 800 or curr_chance >= 300 then
-            --[[   self.lever_pos[{ { b }, { agent } }] = torch.random(2,6)
-	    elseif curr_chance >= 600 then
-		self.lever_pos[{ { b }, { agent } }] = torch.random(2,5)
-	    elseif curr_chance >= 400 then--]]
-		self.lever_pos[{ { b }, { agent } }] = torch.random(2,4)
-	    elseif curr_chance >= 100 then
-		self.lever_pos[{ { b }, { agent } }] = torch.random(2,3)
-	    else
-		self.lever_pos[{ { b }, { agent } }] = 2
-	    end
+	    self.lever_pos[{ { b }, { agent } }] = torch.random(1,4) --lever position 1 means, there is no lever
         end
 
     end
@@ -112,7 +101,7 @@ function SimplePlan:getActionRange(step, agent)
         local bound = self.opt.game_action_space
 
         for b = 1, self.opt.bs do
-            if self.agent_pos[b][agent] == self.lever_pos[b][agent] then
+            if self.agent_pos[b][agent] == self.lever_pos[b][agent] and self.lever_pos[b][agent] ~= 1 then
                 range[b] = { { b }, { 1, bound } }
             else
                 range[b] = { { b }, { 1 , bound -1} }
@@ -185,6 +174,7 @@ function SimplePlan:getReward(a_t,episode)
 		self.terminal[b] = 1
 		--print('both pulled')
 	    elseif self.terminal[b]==0 and (a_t[b][1] == 4 or a_t[b][2] == 4) then
+		self.reward[b] = self.reward_all_die
 		self.terminal[b] = 1
 		--print('one pulled')
 	    end
@@ -193,7 +183,7 @@ function SimplePlan:getReward(a_t,episode)
 
     	    --reward for staying in communication distance at the beginning of the episode, reduces over steps and episodes
 	    if self.terminal[b] == 0 and self.agent_pos[b]:sum(1)[1] == 2 and self.step_counter > 1 then
-	        self.reward[b] = 1/(self.step_counter^2)/(1 + episode/100)
+	        self.reward[b] = 1/(self.step_counter^2)/(1 + episode/200)
 	        --if b == 1 then print('reward for communication distance') end
 	    end
 
@@ -206,11 +196,11 @@ function SimplePlan:getReward(a_t,episode)
 		    self.terminal[b] = 1
 		    --if b == 1 then print('reward for both pulled') end
 	        elseif (a_t[b][1] == 4 and a_t[b][2] ~= 4) then -- agent 1 did pull
-		    self.reward[b] = self.reward_all_live * 1/(1+episode/200) + self.reward_all_die * (1-1/(1+episode/200))
+		    self.reward[b] = self.reward_all_live * 1/(1+episode/1000) + self.reward_all_die * (1-1/(1+episode/1000))
 		    self.pulled_lever[b][1] = 1
 		    --if b == 1 then print('reward for agent 1 pulled') end
 	        elseif (a_t[b][1] ~= 4 and a_t[b][2] == 4) then -- agent 2 did pull
-		    self.reward[b] = self.reward_all_live * 1/(1+episode/200) + self.reward_all_die * (1-1/(1+episode/200))
+		    self.reward[b] = self.reward_all_live * 1/(1+episode/1000) + self.reward_all_die * (1-1/(1+episode/1000))
 		    self.pulled_lever[b][2] = 1
 		    --if b == 1 then print('reward for agent 2 pulled') end
 	        else
@@ -310,13 +300,13 @@ function SimplePlan:imitateAction()
                     pAction[b][agent] = 3
                 elseif (self.agent_pos[b][agent] == self.lever_pos[b][agent]) then --if agent at lever, functionality only for 2 agents
                     if (agent == 1) then
-                        if (self.agent_pos[b][2] == self.lever_pos[b][2]) then
+                        if (self.agent_pos[b][2] == self.lever_pos[b][2] and self.lever_pos[b][1] ~= 1 and self.lever_pos[b][2] ~= 1 ) then
                             pAction[b][agent] = 4 --pull if the other agent is at its lever too
                         else
                             pAction[b][agent] = 1 --stay put
                         end
                     elseif (agent == 2) then
-                        if (self.agent_pos[b][1] == self.lever_pos[b][1]) then
+                        if (self.agent_pos[b][1] == self.lever_pos[b][1] and self.lever_pos[b][1] ~= 1 and self.lever_pos[b][2] ~= 1) then
                             pAction[b][agent] = 4 --pull if the other agent is at its lever too
                         else
                             pAction[b][agent] = 1 --stay put
