@@ -205,7 +205,7 @@ local function run_episode(opt, game, model, agent, e, test_mode)
     test_mode = test_mode or false
 
     -- Reset game
-    game:reset()
+    game:reset(e)
 
     -- Initialise episode
     local step = 1
@@ -278,13 +278,12 @@ local function run_episode(opt, game, model, agent, e, test_mode)
                     end
 
                     table.insert(agent[i].input[step], comm_lim)
-
-		    if test_mode then
+		    --[[if test_mode then
                 	print("\n")
                 	print("The comm sent to agent".. i)
 	                print(comm_lim[1])
 
-		    end
+		    end--]]
                 else
                     -- zero out own communication if not action aware
                     comm[{ {}, { i } }]:zero()
@@ -337,8 +336,8 @@ local function run_episode(opt, game, model, agent, e, test_mode)
 
             --Print the communication for each agent
             if test_mode then
-                print("Agent " .. i .. "'s Current state: " .. episode[step].s_t[i][1][1] .. ' ' .. episode[step].s_t[i][1][2] )
-		print(q_t[1]:view(1,-1))
+                --print("Agent " .. i .. "'s Current state: " .. episode[step].s_t[i][1][1] .. ' ' .. episode[step].s_t[i][1][2] )
+		--print(q_t[1]:view(1,-1))
             --elseif not test_mode then
             --    print("Test_mode is " .. (test_mode and 'true' or 'false') .. " and this is the comm for agent".. i)
             --    print(comm[1]) 
@@ -393,10 +392,10 @@ local function run_episode(opt, game, model, agent, e, test_mode)
 
             -- Store actions
             episode[step].a_t[{ {}, { i } }] = max_a:type(opt.dtype)
-            if test_mode then --prints out the actions for the test mode
+            --[[if test_mode then --prints out the actions for the test mode
                 print("The action for agent " .. i .. " is ")
                 print(episode[step].a_t[1][i])
-            end
+            end--]]
             if opt.model_dial == 0 and opt.game_comm_bits > 0 then
                 episode[step].a_comm_t[{ {}, { i } }] = max_a_comm:type(opt.dtype)
             end
@@ -475,11 +474,11 @@ local function run_episode(opt, game, model, agent, e, test_mode)
         -- Compute reward for current state-action pair
         episode[step].r_t, episode[step].terminal = game:step(episode[step].a_t,e)
 	
-	if test_mode then
+	--[[if test_mode then
 	    print('reward achieved: ')
 	    print(episode[step].r_t[1])
 	    print('terminated: '.. episode[step].terminal[1])
-	end
+	end--]]
 
         -- Accumulate steps (not for +1 step)
         if step <= opt.nsteps then
@@ -643,7 +642,7 @@ for e = 1, opt.nepisodes do
     model.training(model.agent)
 
     --Print which epoch the run is on
-    print("Current epoch: " .. e)
+    --print("Current epoch: " .. e)
 
     -- Run episode
     episode, agent = run_episode(opt, game, model, agent, e)
@@ -658,7 +657,7 @@ for e = 1, opt.nepisodes do
 
     -- Backward pass
     local step_back = 1
-    for step = episode.nsteps, 1, -1 do
+    for step = episode.nsteps, 1, -1 do --iterates backwards through the steps
         stats.td_err[(e - 1) % opt.step + 1] = 0
         stats.td_comm[(e - 1) % opt.step + 1] = 0
 
@@ -728,6 +727,7 @@ for e = 1, opt.nepisodes do
                     end
                 end
             end
+--print(d_err)
 
             -- Track td-err
             stats.td_err[(e - 1) % opt.step + 1] = stats.td_err[(e - 1) % opt.step + 1] + 0.5 * td_err:clone():pow(2):mean()

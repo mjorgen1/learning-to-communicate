@@ -40,10 +40,13 @@ function SimplePlan:__init(opt)
     self.reward_option = 'easy' -- 'time-changing' 'optimisable'
 
     -- Spawn new game
-    self:reset()
+    self:reset(1)
 end
 
-function SimplePlan:reset()
+function SimplePlan:reset(episode)
+
+    --save episode
+    self.episode = episode
 
     -- Reset rewards
     self.reward = torch.zeros(self.opt.bs, self.opt.game_nagents)
@@ -71,7 +74,18 @@ function SimplePlan:reset()
 
     for b = 1, self.opt.bs do
 	for agent = 1, self.opt.game_nagents do
-            self.lever_pos[{ { b }, { agent } }] = torch.random(2,4)
+	    curr_chance = torch.random(1,episode)
+	    if episode >= 800 or curr_chance >= 300 then
+            --[[   self.lever_pos[{ { b }, { agent } }] = torch.random(2,6)
+	    elseif curr_chance >= 600 then
+		self.lever_pos[{ { b }, { agent } }] = torch.random(2,5)
+	    elseif curr_chance >= 400 then--]]
+		self.lever_pos[{ { b }, { agent } }] = torch.random(2,4)
+	    elseif curr_chance >= 100 then
+		self.lever_pos[{ { b }, { agent } }] = torch.random(2,3)
+	    else
+		self.lever_pos[{ { b }, { agent } }] = 2
+	    end
         end
 
     end
@@ -169,10 +183,10 @@ function SimplePlan:getReward(a_t,episode)
 	    if self.terminal[b]==0 and (a_t[b][1] == 4 and a_t[b][2] == 4) then -- both did pull
                 self.reward[b] = self.reward_all_live
 		self.terminal[b] = 1
-		print('both pulled')
+		--print('both pulled')
 	    elseif self.terminal[b]==0 and (a_t[b][1] == 4 or a_t[b][2] == 4) then
 		self.terminal[b] = 1
-		print('one pulled')
+		--print('one pulled')
 	    end
 
         elseif selfreward_option == 'time-changing' then

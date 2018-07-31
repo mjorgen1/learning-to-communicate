@@ -361,7 +361,7 @@ return function(opt)
 
         local model = nn.gModule(model_inputs, model_outputs)
 
-	print('in_rnn_state')
+	--[[print('in_rnn_state')
 	print(in_rnn_state)
 	print('rnn_output')
 	print(rnn_output)
@@ -384,7 +384,7 @@ return function(opt)
 	print('proc_input')
 	print(proc_input)
 	print('proc_out')
-	print(proc_out)
+	print(proc_out)--]]
 	
         return model:type(opt.dtype)
     end
