@@ -188,7 +188,7 @@ return function(opt)
             for b = 1, opt.bs do
 		lever_pos = game.lever_pos[b]
 		if lever_pos[1] ~= 1 and lever_pos[2] ~= 1 then 
-                    r_god = r_god + game.reward_all_live + (lever_pos:sum()/2-1) * game.pot_weight
+                    r_god = r_god + game.reward_all_live
 		end
             end
             stats.test_god[test_idx] = r_god / opt.bs

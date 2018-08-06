@@ -6,14 +6,14 @@ local kwargs = require 'include.kwargs'
 local util = require 'include.util'
 
 
-local SimplePlan = class('SimplePlan')
+local WaitingPlan = class('WaitingPlan')
 
 -- Actions
--- 1 = stay
--- 2 = forward
--- 3* = pull
+-- 1 = wait
+-- 2 = pull
 
-function SimplePlan:__init(opt)
+
+function WaitingPlan:__init(opt)
 
     local opt_game = kwargs(_, {
         { 'game_action_space', type = 'int-pos', default = 2 },
@@ -36,13 +36,13 @@ function SimplePlan:__init(opt)
     self.reward_all_die = -1 + self.opt.game_reward_shift
     self.reward_small_off = -0.2
 
-    self.reward_option =  'potential' --'optimisable' 'time-changing' 'easy'
+    self.reward_option =  'optimisable' -- 'time-changing'  'easy'
 
     -- Spawn new game
     self:reset(1)
 end
 
-function SimplePlan:reset(episode)
+function WaitingPlan:reset(episode)
 
     --save episode
     self.episode = episode
@@ -68,7 +68,7 @@ function SimplePlan:reset(episode)
     -- Agent positions
     self.agent_pos = torch.ones(self.opt.bs,self.opt.game_nagents)
 
-    -- Whos SimplePlan is at which position? 
+    -- Whos WaitingPlan is at which position? 
     self.lever_pos = torch.zeros(self.opt.bs, self.opt.game_nagents)
 
     lever_pos_distribution = {2,2,3,4}
@@ -81,27 +81,24 @@ function SimplePlan:reset(episode)
 
     end
 
-    self.pot_weight = self.opt.gamma
 
     return self
 end
 
-function SimplePlan:getActionRange(step, agent)
+function WaitingPlan:getActionRange(step, agent)
     local range = {}
     if self.opt.model_dial == 1 then           
         local bound = self.opt.game_action_space
 
         for b = 1, self.opt.bs do
-            if self.agent_pos[b][agent] == self.lever_pos[b][agent] and self.lever_pos[b][agent] ~= 1 then
+            if self.agent_pos[b][agent] >= self.lever_pos[b][agent] and self.lever_pos[b][agent] ~= 1 then
                 range[b] = { { b }, { 1, bound } }
-            --elseif self.step_counter == 1 then
-                --range[b] = { { b }, { 1 , 1} }
 	    else
                 range[b] = { { b }, { 1 , bound -1} }
             end
         end
         return range
-    else					--the rial option was not updated to fit the SimplePlan game yet
+    else					--the rial option was not updated to fit the WaitingPlan game yet
         local comm_range = {}
         for b = 1, self.opt.bs do
             if self.active_agent[b][step] == agent then
@@ -117,17 +114,17 @@ function SimplePlan:getActionRange(step, agent)
 end
 
 
-function SimplePlan:getCommLimited(step, i)
+function WaitingPlan:getCommLimited(step, i)
     if self.opt.game_comm_limited == 1 then
 
         local range = {}
 
         -- Get range per batch
         for b = 1, self.opt.bs do
-            if self.agent_pos[b]:sum(1)[1] == 2 then
-                if step > 1 and i == 1 then
+            if step == 2 then
+                if i == 1 then
                     range[b] = { 2, {} }
-                elseif step > 1 and i == 2 then
+                elseif  i == 2 then
                     range[b] = { 1, {} }
 	        else
                     range[b] = 0
@@ -154,7 +151,7 @@ function SimplePlan:getCommLimited(step, i)
     end
 end
 
-function SimplePlan:getReward(a_t,episode)
+function WaitingPlan:getReward(a_t,episode)
     
     self.reward = torch.zeros(self.opt.bs, self.opt.game_nagents)
 
@@ -162,11 +159,11 @@ function SimplePlan:getReward(a_t,episode)
  
         if self.reward_option == 'easy' then
 
-	    if self.terminal[b]==0 and (a_t[b][1] == 3 and a_t[b][2] == 3) then -- both did pull
+	    if self.terminal[b]==0 and (a_t[b][1] == 4 and a_t[b][2] == 4) then -- both did pull
                 self.reward[b] = self.reward_all_live
 		self.terminal[b] = 1
 		--print('both pulled')
-	    elseif self.terminal[b]==0 and (a_t[b][1] == 3 or a_t[b][2] == 3) then
+	    elseif self.terminal[b]==0 and (a_t[b][1] == 4 or a_t[b][2] == 4) then
 		--self.reward[b] = self.reward_all_die
 		self.terminal[b] = 1
 		--print('one pulled')
@@ -174,14 +171,12 @@ function SimplePlan:getReward(a_t,episode)
 
 	elseif self.reward_option == 'optimisable' then
 
-	    if self.terminal[b]==0 and (a_t[b][1] == 3 and a_t[b][2] == 3) then -- both did pull
-		earliest = torch.max(self.lever_pos[b])
-		if (self.step_counter > earliest) then
-                	self.reward[b] = self.reward_all_live * 1/(self.step_counter-earliest)
-		end
+	    if self.terminal[b]==0 and (a_t[b][1] == 2 and a_t[b][2] == 2) then -- both did pull
+		earliest = torch.max(self.lever_pos[b])-1
+                self.reward[b] = self.reward_all_live * 1/(self.step_counter-earliest)
 		self.terminal[b] = 1
 		--print('both pulled')
-	    elseif self.terminal[b]==0 and (a_t[b][1] == 3 or a_t[b][2] == 3) then
+	    elseif self.terminal[b]==0 and (a_t[b][1] == 2 or a_t[b][2] == 2) then
 		--self.reward[b] = self.reward_all_die
 		self.terminal[b] = 1
 		--print('one pulled')
@@ -199,16 +194,16 @@ function SimplePlan:getReward(a_t,episode)
 
             if self.terminal[b] == 0 and self.pulled_lever[b]:sum(1)[1] == 0 then -- noone pulled by now
 
-                earliest = torch.max(self.lever_pos[b]) - 1
-	        if (a_t[b][1] == 3 and a_t[b][2] == 3) then -- both did pull
+                earliest = torch.max(self.lever_pos[b])
+	        if (a_t[b][1] == 4 and a_t[b][2] == 4) then -- both did pull
                     self.reward[b] = self.reward_all_live * 1/(self.step_counter-earliest)
 		    self.terminal[b] = 1
 		    --if b == 1 then print('reward for both pulled') end
-	        elseif (a_t[b][1] == 3 and a_t[b][2] ~= 3) then -- agent 1 did pull
+	        elseif (a_t[b][1] == 4 and a_t[b][2] ~= 4) then -- agent 1 did pull
 		    self.reward[b] = self.reward_all_live* 1/(1+episode/2000) + self.reward_all_die * (1-1/(1+episode/2000))
 		    self.pulled_lever[b][1] = 1
 		    --if b == 1 then print('reward for agent 1 pulled') end
-	        elseif (a_t[b][1] ~= 3 and a_t[b][2] == 3) then -- agent 2 did pull
+	        elseif (a_t[b][1] ~= 4 and a_t[b][2] == 4) then -- agent 2 did pull
 		    self.reward[b] = self.reward_all_live * 1/(1+episode/2000) + self.reward_all_die * (1-1/(1+episode/2000))
 		    self.pulled_lever[b][2] = 1
 		    --if b == 1 then print('reward for agent 2 pulled') end
@@ -220,7 +215,7 @@ function SimplePlan:getReward(a_t,episode)
 
             elseif self.terminal[b] == 0 and self.pulled_lever[b]:sum(1)[1] == 1 then -- one pulled by now
 
-	        if (self.pulled_lever[b][1] == 1 and a_t[b][2] == 3) or (a_t[b][1] == 3 and self.pulled_lever[b][2] == 1) then -- both did pull
+	        if (self.pulled_lever[b][1] == 1 and a_t[b][2] == 4) or (a_t[b][1] == 4 and self.pulled_lever[b][2] == 1) then -- both did pull
 		    self.terminal[b] = 1
 		    --if b == 1 then print('reward for second pulled') end
 	        else
@@ -229,84 +224,6 @@ function SimplePlan:getReward(a_t,episode)
 	        end 
 
 	    end
-
-	elseif self.reward_option == 'potential' then
-
-	--reward for the single agent giving a hint on the right path
-	    if self.terminal[b]==0 and self.agent_pos[b][1] == 1 and self.agent_pos[b][2] == 1 then
-		if a_t[b][1]~=a_t[b][2] then
-		    self.reward[b] = self.reward[b] -1 * self.pot_weight
-		end
-	    elseif self.terminal[b]==0 then
-
-		if self.agent_pos[b][1] < self.lever_pos[b][1] then
-		    if a_t[b][1]==2 then
-			self.reward[b][1] = self.reward[b][1] + 1 * self.pot_weight
-		    end
-		elseif self.agent_pos[b][1] > self.lever_pos[b][1] then
-		    if a_t[b][1]==2 then
-			self.reward[b][1] = self.reward[b][1] - 1 * self.pot_weight
-		    end
-		elseif self.agent_pos[b][1] == self.lever_pos[b][1] then
-		    if a_t[b][1]==2 then
-			self.reward[b][1] = self.reward[b][1] - 1 * self.pot_weight
-		    elseif a_t[b][1]==1 then
-			if self.agent_pos[b][2] < self.lever_pos[b][2] then
-			    self.reward[b][1] = self.reward[b][1] + 1 * self.pot_weight 
-			else
-			    self.reward[b][1] = self.reward[b][1] -1 * self.pot_weight
-			end
-		    elseif a_t[b][1]==3 then
-			if a_t[b][2]==3 then
-			    self.reward[b][1] = self.reward[b][1] + 1 * self.pot_weight
-			elseif self.agent_pos[b][2]<self.lever_pos[b][2] then
-			    self.reward[b][1] = self.reward[b][1] - 3 * self.pot_weight
-			elseif self.agent_pos[b][2]>=self.lever_pos[b][2] then
-			    self.reward[b][1] = self.reward[b][1] + 0.5 * self.pot_weight
-			end
-		    end
-		end
-
-		if self.agent_pos[b][2] < self.lever_pos[b][2] then
-		    if a_t[b][2]==2 then
-			self.reward[b][2] = self.reward[b][2] + 1 * self.pot_weight
-		    end
-		elseif self.agent_pos[b][2] > self.lever_pos[b][2] then
-		    if a_t[b][2]==2 then
-			self.reward[b][2] = self.reward[b][2] - 1 * self.pot_weight
-		    end
-		elseif self.agent_pos[b][2] == self.lever_pos[b][2] then
-		    if a_t[b][2]==2 then
-			self.reward[b][2] = self.reward[b][2] - 1 * self.pot_weight
-		    elseif a_t[b][2]==1 then
-			if self.agent_pos[b][1] < self.lever_pos[b][1] then
-			    self.reward[b][2] = self.reward[b][2] + 1 * self.pot_weight 
-			else
-			    self.reward[b][2] = self.reward[b][2] -1 * self.pot_weight
-			end
-		    elseif a_t[b][2]==3 then
-			if a_t[b][1]==3 then
-			    self.reward[b][2] = self.reward[b][2] + 1 * self.pot_weight
-			elseif self.agent_pos[b][1]<self.lever_pos[b][1] then
-			    self.reward[b][2] = self.reward[b][2] - 3 * self.pot_weight
-			elseif self.agent_pos[b][1]>=self.lever_pos[b][1] then
-			    self.reward[b][2] = self.reward[b][2] + 0.5 * self.pot_weight
-			end
-		    end
-		end
-	    end
-
-	--cooperative reward for successfully pulling the lever
-	    if self.terminal[b]==0 and (a_t[b][1] == 3 and a_t[b][2] == 3) then
-		earliest = torch.max(self.lever_pos[b])
-		if (self.step_counter > earliest) then
-                	self.reward[b] = self.reward_all_live * 1/(self.step_counter-earliest)
-		end
-		self.terminal[b] = 1
-	    elseif self.terminal[b]==0 and (a_t[b][1] == 3 or a_t[b][2] == 3) then
-		self.terminal[b] = 1
-	    end
-	
 
 	end
 
@@ -319,7 +236,7 @@ function SimplePlan:getReward(a_t,episode)
     return self.reward:clone(), self.terminal:clone()
 end
 
-function SimplePlan:step(a_t,episode)
+function WaitingPlan:step(a_t,episode)
 
     -- Get rewards
     local reward, terminal = self:getReward(a_t,episode)
@@ -330,15 +247,9 @@ function SimplePlan:step(a_t,episode)
 
     for b = 1, self.opt.bs do
         for agent = 1, self.opt.game_nagents do
-
-	    local movement = 0
-
-	    if a_t[b][agent] == 2 then
-		movement = 1
-		--print(agent .. ' moved forward')
+	    if self.agent_pos[b][agent] < self.lever_pos[b][agent] then
+                self.agent_pos[b][agent] = self.agent_pos[b][agent] + 1
 	    end
-
-            self.agent_pos[b][agent] = self.agent_pos[b][agent] + movement
         end
     end
 
@@ -346,7 +257,7 @@ function SimplePlan:step(a_t,episode)
 end
 
 
-function SimplePlan:getState()
+function WaitingPlan:getState()
     local state = {}
 
     for agent = 1, self.opt.game_nagents do
@@ -366,7 +277,7 @@ function SimplePlan:getState()
     return state
 end
 
-function SimplePlan:imitateAction()
+function WaitingPlan:imitateAction()
     local step = self.step_counter
     local pAction = torch.zeros(self.opt.bs, self.opt.game_nagents):type(self.opt.dtype)
 
@@ -378,18 +289,18 @@ function SimplePlan:imitateAction()
             elseif (step <= self.opt.nsteps) then
                 if (self.agent_pos[b][agent] < self.lever_pos[b][agent]) then --if agent is behind lever, move forward
                     pAction[b][agent] = 2 
-                elseif (self.agent_pos[b][agent] > self.lever_pos[b][agent]) then --if agent is ahead of lever, stay
-                    pAction[b][agent] = 1
+                elseif (self.agent_pos[b][agent] > self.lever_pos[b][agent]) then --if agent is ahead of lever, move backward
+                    pAction[b][agent] = 3
                 elseif (self.agent_pos[b][agent] == self.lever_pos[b][agent]) then --if agent at lever, functionality only for 2 agents
                     if (agent == 1) then
                         if (self.agent_pos[b][2] == self.lever_pos[b][2] and self.lever_pos[b][1] ~= 1 and self.lever_pos[b][2] ~= 1 ) then
-                            pAction[b][agent] = 3 --pull if the other agent is at its lever too
+                            pAction[b][agent] = 4 --pull if the other agent is at its lever too
                         else
                             pAction[b][agent] = 1 --stay put
                         end
                     elseif (agent == 2) then
                         if (self.agent_pos[b][1] == self.lever_pos[b][1] and self.lever_pos[b][1] ~= 1 and self.lever_pos[b][2] ~= 1) then
-                            pAction[b][agent] = 3 --pull if the other agent is at its lever too
+                            pAction[b][agent] = 4 --pull if the other agent is at its lever too
                         else
                             pAction[b][agent] = 1 --stay put
                         end
@@ -405,5 +316,5 @@ function SimplePlan:imitateAction()
     return pAction
 end
 
-return SimplePlan
+return WaitingPlan
 

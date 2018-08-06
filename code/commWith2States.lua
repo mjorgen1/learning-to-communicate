@@ -210,8 +210,8 @@ local function run_episode(opt, game, model, agent, e, test_mode)
     game:reset(e)
     local im_learning = false
     -- allow imitation learning every even numbered episodes
-    if(imitation_Learning == 1) then
-        if(e % 2 == 0) then
+    if(opt.imitation_Learning == 1) then
+        if(e % 2 == 0  ) then
             im_learning = true
         else
             im_learning = false
