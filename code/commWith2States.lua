@@ -457,8 +457,11 @@ local function run_episode(opt, game, model, agent, e, test_mode)
                     end
                 end
                 if not test_mode and im_learning then
-                    local actions = game:imitateAction()
                     --print(actions)
+                    local comm_actions, actions = game:imitateAction()
+                    if(opt.model_dial == 0) then
+                        episode[step].a_comm_t[b][i] = comm_actions[b][i]
+                    end
                     episode[step].a_t[b][i] = actions[b][i]
                 end
 

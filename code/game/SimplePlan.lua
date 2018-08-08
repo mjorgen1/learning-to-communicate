@@ -36,7 +36,7 @@ function SimplePlan:__init(opt)
     self.reward_all_die = -1 + self.opt.game_reward_shift
     self.reward_small_off = -0.2
 
-    self.reward_option =  'potential' --'optimisable' 'time-changing' 'easy'
+    self.reward_option =  'optimisable' --'potential' 'time-changing' 'easy'
 
     -- Spawn new game
     self:reset(1)
@@ -96,19 +96,23 @@ function SimplePlan:getActionRange(step, agent)
                 range[b] = { { b }, { 1, bound } }
             --elseif self.step_counter == 1 then
                 --range[b] = { { b }, { 1 , 1} }
-	    else
+	        else
                 range[b] = { { b }, { 1 , bound -1} }
             end
         end
         return range
-    else					--the rial option was not updated to fit the SimplePlan game yet
+    else					--the rial option
         local comm_range = {}
+        local bound = self.opt.game_action_space
         for b = 1, self.opt.bs do
-            if self.active_agent[b][step] == agent then
-                range[b] = { { b }, { 1, self.opt.game_action_space } }
-                comm_range[b] = { { b }, { self.opt.game_action_space + 1, self.opt.game_action_space_total } }
+            if self.agent_pos[b][agent] == self.lever_pos[b][agent] and self.lever_pos[b][agent] ~= 1 then
+                range[b] = { { b }, { 1, bound } }
             else
-                range[b] = { { b }, { 1 } }
+                range[b] = { { b }, { bound - 1 } } 
+            end
+            if self.agent_pos[b]:sum(1)[1] == 2 then
+                comm_range[b] = { { b }, { bound + 1, self.opt.game_action_space_total } }
+            else
                 comm_range[b] = { { b }, { 0, 0 } }
             end
         end
@@ -118,7 +122,7 @@ end
 
 
 function SimplePlan:getCommLimited(step, i)
-    if self.opt.game_comm_limited == 1 then
+    if self.opt.game_comm_limited == 1 then --commLimited
 
         local range = {}
 
@@ -137,7 +141,7 @@ function SimplePlan:getCommLimited(step, i)
 	    end
         end
         return range
-    else
+    else                                   --no commLimited
         local range = {}
 
         -- Get range per batch
@@ -152,6 +156,7 @@ function SimplePlan:getCommLimited(step, i)
         end
         return range
     end
+    --3 comm actions for a_t 
 end
 
 function SimplePlan:getReward(a_t,episode)
@@ -162,159 +167,155 @@ function SimplePlan:getReward(a_t,episode)
  
         if self.reward_option == 'easy' then
 
-	    if self.terminal[b]==0 and (a_t[b][1] == 3 and a_t[b][2] == 3) then -- both did pull
+	        if self.terminal[b]==0 and (a_t[b][1] == 3 and a_t[b][2] == 3) then -- both did pull
                 self.reward[b] = self.reward_all_live
-		self.terminal[b] = 1
-		--print('both pulled')
-	    elseif self.terminal[b]==0 and (a_t[b][1] == 3 or a_t[b][2] == 3) then
-		--self.reward[b] = self.reward_all_die
-		self.terminal[b] = 1
-		--print('one pulled')
-	    end
+		        self.terminal[b] = 1
+		        --print('both pulled')
+	        elseif self.terminal[b]==0 and (a_t[b][1] == 3 or a_t[b][2] == 3) then
+		        --self.reward[b] = self.reward_all_die
+		        self.terminal[b] = 1
+		        --print('one pulled')
+	        end
 
-	elseif self.reward_option == 'optimisable' then
+	    elseif self.reward_option == 'optimisable' then
 
-	    if self.terminal[b]==0 and (a_t[b][1] == 3 and a_t[b][2] == 3) then -- both did pull
-		earliest = torch.max(self.lever_pos[b])
-		if (self.step_counter > earliest) then
-                	self.reward[b] = self.reward_all_live * 1/(self.step_counter-earliest)
-		end
-		self.terminal[b] = 1
-		--print('both pulled')
-	    elseif self.terminal[b]==0 and (a_t[b][1] == 3 or a_t[b][2] == 3) then
-		--self.reward[b] = self.reward_all_die
-		self.terminal[b] = 1
-		--print('one pulled')
-	    end
-
+	        if self.terminal[b]==0 and (a_t[b][1] == 3 and a_t[b][2] == 3) then -- both did pull
+		        earliest = torch.max(self.lever_pos[b])
+		        if (self.step_counter > earliest) then  --both pulled but not at the first instance they could have
+                    self.reward[b] = self.reward_all_live * 1/(self.step_counter-earliest)
+		        end
+		        self.terminal[b] = 1
+		        --print('both pulled')
+	        elseif self.terminal[b]==0 and (a_t[b][1] == 3 or a_t[b][2] == 3) then
+		        --self.reward[b] = self.reward_all_die
+		        self.terminal[b] = 1
+		        --print('one pulled')
+	        end
 
         elseif self.reward_option == 'time-changing' then
     	    --reward for staying in communication distance at the beginning of the episode, reduces over steps and episodes
-	   --[[ if self.terminal[b] == 0 and self.agent_pos[b]:sum(1)[1] == 2 and self.step_counter > 1 then
-	        self.reward[b] = 1/(self.step_counter^2)/(1 + episode/200)
+	        --[[ if self.terminal[b] == 0 and self.agent_pos[b]:sum(1)[1] == 2 and self.step_counter > 1 then
+	            self.reward[b] = 1/(self.step_counter^2)/(1 + episode/200)
 	        --if b == 1 then print('reward for communication distance') end
-	    end--]]
+	        end--]]
 
-	    --rewards for pulling the lever, without coordination. Decreases into negative values over episodes
+	        --rewards for pulling the lever, without coordination. Decreases into negative values over episodes
 
             if self.terminal[b] == 0 and self.pulled_lever[b]:sum(1)[1] == 0 then -- noone pulled by now
 
                 earliest = torch.max(self.lever_pos[b]) - 1
-	        if (a_t[b][1] == 3 and a_t[b][2] == 3) then -- both did pull
+	            if (a_t[b][1] == 3 and a_t[b][2] == 3) then -- both did pull
                     self.reward[b] = self.reward_all_live * 1/(self.step_counter-earliest)
-		    self.terminal[b] = 1
-		    --if b == 1 then print('reward for both pulled') end
-	        elseif (a_t[b][1] == 3 and a_t[b][2] ~= 3) then -- agent 1 did pull
-		    self.reward[b] = self.reward_all_live* 1/(1+episode/2000) + self.reward_all_die * (1-1/(1+episode/2000))
-		    self.pulled_lever[b][1] = 1
-		    --if b == 1 then print('reward for agent 1 pulled') end
-	        elseif (a_t[b][1] ~= 3 and a_t[b][2] == 3) then -- agent 2 did pull
-		    self.reward[b] = self.reward_all_live * 1/(1+episode/2000) + self.reward_all_die * (1-1/(1+episode/2000))
-		    self.pulled_lever[b][2] = 1
-		    --if b == 1 then print('reward for agent 2 pulled') end
-	        else
-		    --if b == 1 then print('reward for none pulled') end
-	        end
+		            self.terminal[b] = 1
+		            --if b == 1 then print('reward for both pulled') end
+	            elseif (a_t[b][1] == 3 and a_t[b][2] ~= 3) then -- agent 1 did pull
+		            self.reward[b] = self.reward_all_live* 1/(1+episode/2000) + self.reward_all_die * (1-1/(1+episode/2000))
+		            self.pulled_lever[b][1] = 1
+		            --if b == 1 then print('reward for agent 1 pulled') end
+	            elseif (a_t[b][1] ~= 3 and a_t[b][2] == 3) then -- agent 2 did pull
+		            self.reward[b] = self.reward_all_live * 1/(1+episode/2000) + self.reward_all_die * (1-1/(1+episode/2000))
+		            self.pulled_lever[b][2] = 1
+		            --if b == 1 then print('reward for agent 2 pulled') end
+	            else
+		            --if b == 1 then print('reward for none pulled') end
+	            end
 
-	    --reward for pulling the lever after the other, stops negative reward
+	        --reward for pulling the lever after the other, stops negative reward
 
             elseif self.terminal[b] == 0 and self.pulled_lever[b]:sum(1)[1] == 1 then -- one pulled by now
 
-	        if (self.pulled_lever[b][1] == 1 and a_t[b][2] == 3) or (a_t[b][1] == 3 and self.pulled_lever[b][2] == 1) then -- both did pull
-		    self.terminal[b] = 1
-		    --if b == 1 then print('reward for second pulled') end
-	        else
-		    self.reward[b] = self.reward_small_off * 1/(1+episode/200)
-		    --if b == 1 then print('reward for waiting for second pulled') end
-	        end 
+	            if (self.pulled_lever[b][1] == 1 and a_t[b][2] == 3) or (a_t[b][1] == 3 and self.pulled_lever[b][2] == 1) then -- both did pull
+		            self.terminal[b] = 1
+		            --if b == 1 then print('reward for second pulled') end
+	            else
+		            self.reward[b] = self.reward_small_off * 1/(1+episode/200)
+		            --if b == 1 then print('reward for waiting for second pulled') end
+	            end 
 
+	        end
+
+	    elseif self.reward_option == 'potential' then
+
+	        --reward for the single agent giving a hint on the right path
+	        if self.terminal[b]==0 and self.agent_pos[b][1] == 1 and self.agent_pos[b][2] == 1 then
+		        if a_t[b][1]~=a_t[b][2] then
+		            self.reward[b] = self.reward[b] -1 * self.pot_weight
+		        end
+	        elseif self.terminal[b]==0 then
+
+		        if self.agent_pos[b][1] < self.lever_pos[b][1] then
+		            if a_t[b][1]==2 then
+			            self.reward[b][1] = self.reward[b][1] + 1 * self.pot_weight
+		            end
+		        elseif self.agent_pos[b][1] > self.lever_pos[b][1] then
+		            if a_t[b][1]==2 then
+			            self.reward[b][1] = self.reward[b][1] - 1 * self.pot_weight
+		            end
+		        elseif self.agent_pos[b][1] == self.lever_pos[b][1] then
+		            if a_t[b][1]==2 then
+			            self.reward[b][1] = self.reward[b][1] - 1 * self.pot_weight
+		            elseif a_t[b][1]==1 then
+			            if self.agent_pos[b][2] < self.lever_pos[b][2] then
+			                self.reward[b][1] = self.reward[b][1] + 1 * self.pot_weight 
+			            else
+			                self.reward[b][1] = self.reward[b][1] -1 * self.pot_weight
+			            end
+		            elseif a_t[b][1]==3 then
+			            if a_t[b][2]==3 then
+			                self.reward[b][1] = self.reward[b][1] + 1 * self.pot_weight
+			            elseif self.agent_pos[b][2]<self.lever_pos[b][2] then
+			                self.reward[b][1] = self.reward[b][1] - 3 * self.pot_weight
+			            elseif self.agent_pos[b][2]>=self.lever_pos[b][2] then
+			                self.reward[b][1] = self.reward[b][1] + 0.5 * self.pot_weight
+			            end
+		            end
+		        end
+
+		        if self.agent_pos[b][2] < self.lever_pos[b][2] then
+		            if a_t[b][2]==2 then
+			            self.reward[b][2] = self.reward[b][2] + 1 * self.pot_weight
+		            end
+		        elseif self.agent_pos[b][2] > self.lever_pos[b][2] then
+		            if a_t[b][2]==2 then
+			            self.reward[b][2] = self.reward[b][2] - 1 * self.pot_weight
+		            end
+		        elseif self.agent_pos[b][2] == self.lever_pos[b][2] then
+		            if a_t[b][2]==2 then
+			            self.reward[b][2] = self.reward[b][2] - 1 * self.pot_weight
+		            elseif a_t[b][2]==1 then
+			            if self.agent_pos[b][1] < self.lever_pos[b][1] then
+			                self.reward[b][2] = self.reward[b][2] + 1 * self.pot_weight 
+			            else
+			                self.reward[b][2] = self.reward[b][2] -1 * self.pot_weight
+			            end
+		            elseif a_t[b][2]==3 then
+			            if a_t[b][1]==3 then
+			                self.reward[b][2] = self.reward[b][2] + 1 * self.pot_weight
+			            elseif self.agent_pos[b][1]<self.lever_pos[b][1] then
+			                self.reward[b][2] = self.reward[b][2] - 3 * self.pot_weight
+			            elseif self.agent_pos[b][1]>=self.lever_pos[b][1] then
+			                self.reward[b][2] = self.reward[b][2] + 0.5 * self.pot_weight
+			            end
+		            end
+	            end
+            end
+
+	        --cooperative reward for successfully pulling the lever
+	        if self.terminal[b]==0 and (a_t[b][1] == 3 and a_t[b][2] == 3) then
+		        earliest = torch.max(self.lever_pos[b])
+		        if (self.step_counter > earliest) then
+                    self.reward[b] = self.reward_all_live * 1/(self.step_counter-earliest)
+		        end
+		        self.terminal[b] = 1
+	        elseif self.terminal[b]==0 and (a_t[b][1] == 3 or a_t[b][2] == 3) then
+		        self.terminal[b] = 1
+	        end
 	    end
-
-	elseif self.reward_option == 'potential' then
-
-	--reward for the single agent giving a hint on the right path
-	    if self.terminal[b]==0 and self.agent_pos[b][1] == 1 and self.agent_pos[b][2] == 1 then
-		if a_t[b][1]~=a_t[b][2] then
-		    self.reward[b] = self.reward[b] -1 * self.pot_weight
-		end
-	    elseif self.terminal[b]==0 then
-
-		if self.agent_pos[b][1] < self.lever_pos[b][1] then
-		    if a_t[b][1]==2 then
-			self.reward[b][1] = self.reward[b][1] + 1 * self.pot_weight
-		    end
-		elseif self.agent_pos[b][1] > self.lever_pos[b][1] then
-		    if a_t[b][1]==2 then
-			self.reward[b][1] = self.reward[b][1] - 1 * self.pot_weight
-		    end
-		elseif self.agent_pos[b][1] == self.lever_pos[b][1] then
-		    if a_t[b][1]==2 then
-			self.reward[b][1] = self.reward[b][1] - 1 * self.pot_weight
-		    elseif a_t[b][1]==1 then
-			if self.agent_pos[b][2] < self.lever_pos[b][2] then
-			    self.reward[b][1] = self.reward[b][1] + 1 * self.pot_weight 
-			else
-			    self.reward[b][1] = self.reward[b][1] -1 * self.pot_weight
-			end
-		    elseif a_t[b][1]==3 then
-			if a_t[b][2]==3 then
-			    self.reward[b][1] = self.reward[b][1] + 1 * self.pot_weight
-			elseif self.agent_pos[b][2]<self.lever_pos[b][2] then
-			    self.reward[b][1] = self.reward[b][1] - 3 * self.pot_weight
-			elseif self.agent_pos[b][2]>=self.lever_pos[b][2] then
-			    self.reward[b][1] = self.reward[b][1] + 0.5 * self.pot_weight
-			end
-		    end
-		end
-
-		if self.agent_pos[b][2] < self.lever_pos[b][2] then
-		    if a_t[b][2]==2 then
-			self.reward[b][2] = self.reward[b][2] + 1 * self.pot_weight
-		    end
-		elseif self.agent_pos[b][2] > self.lever_pos[b][2] then
-		    if a_t[b][2]==2 then
-			self.reward[b][2] = self.reward[b][2] - 1 * self.pot_weight
-		    end
-		elseif self.agent_pos[b][2] == self.lever_pos[b][2] then
-		    if a_t[b][2]==2 then
-			self.reward[b][2] = self.reward[b][2] - 1 * self.pot_weight
-		    elseif a_t[b][2]==1 then
-			if self.agent_pos[b][1] < self.lever_pos[b][1] then
-			    self.reward[b][2] = self.reward[b][2] + 1 * self.pot_weight 
-			else
-			    self.reward[b][2] = self.reward[b][2] -1 * self.pot_weight
-			end
-		    elseif a_t[b][2]==3 then
-			if a_t[b][1]==3 then
-			    self.reward[b][2] = self.reward[b][2] + 1 * self.pot_weight
-			elseif self.agent_pos[b][1]<self.lever_pos[b][1] then
-			    self.reward[b][2] = self.reward[b][2] - 3 * self.pot_weight
-			elseif self.agent_pos[b][1]>=self.lever_pos[b][1] then
-			    self.reward[b][2] = self.reward[b][2] + 0.5 * self.pot_weight
-			end
-		    end
-		end
-	    end
-
-	--cooperative reward for successfully pulling the lever
-	    if self.terminal[b]==0 and (a_t[b][1] == 3 and a_t[b][2] == 3) then
-		earliest = torch.max(self.lever_pos[b])
-		if (self.step_counter > earliest) then
-                	self.reward[b] = self.reward_all_live * 1/(self.step_counter-earliest)
-		end
-		self.terminal[b] = 1
-	    elseif self.terminal[b]==0 and (a_t[b][1] == 3 or a_t[b][2] == 3) then
-		self.terminal[b] = 1
-	    end
-	
-
-	end
-
+       
         if self.step_counter == self.opt.nsteps and self.terminal[b] == 0 then
             self.terminal[b] = 1
-	    --print('0')
+	        --print('0')
         end
-
     end
     return self.reward:clone(), self.terminal:clone()
 end
@@ -369,10 +370,10 @@ end
 function SimplePlan:imitateAction()
     local step = self.step_counter
     local pAction = torch.zeros(self.opt.bs, self.opt.game_nagents):type(self.opt.dtype)
-
+    local cAction = torch.zeros(self.opt.bs, self.opt.game_nagents):type(self.opt.dtype)
+    
     for b = 1, self.opt.bs do
         for agent = 1, self.opt.game_nagents do
-
             if (step == 1) then --if on first step, stay in place so comm occurs
                 pAction[b][agent] = 1 
             elseif (step <= self.opt.nsteps) then
@@ -398,11 +399,25 @@ function SimplePlan:imitateAction()
                     end
                 end
             end
-
+        end
+    end
+    
+    if (self.opt.model_dial == 0) then
+        for b = 1, self.opt.bs do
+            for agent = 1, self.opt.game_nagents do
+                if(self.lever_pos[b][agent] == 2) then
+                    cAction[b][agent] = 4
+                elseif (self.lever_pos[b][agent] == 3) then
+                    cAction[b][agent] = 5
+                elseif (self.lever_pos[b][agent] == 4) then
+                    cAction[b][agent] = 6
+                end
+            end
         end
     end
 
-    return pAction
+    return cAction, pAction
+
 end
 
 return SimplePlan
