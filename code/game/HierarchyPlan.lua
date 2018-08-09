@@ -182,14 +182,14 @@ function HierarchyPlan:getReward(a_t,time_target)
 
 		if self.step_counter == time_target[b][1]+1 then
 		    self.reward[b][1] = self.reward_all_live
-		elseif self.step_counter == time_target[b][1] or self.step_counter == time_target[b][1]+2 then
-		    self.reward[b][1] = self.reward_all_live/2
+		elseif self.step_counter < time_target[b][1] or self.step_counter > time_target[b][1]+2 then
+		    self.reward[b][1] = - self.reward_all_live
 		end
 
 		if self.step_counter == time_target[b][2]+1 then
 		    self.reward[b][2] = self.reward_all_live
-		elseif self.step_counter == time_target[b][2] or self.step_counter == time_target[b][2]+2 then
-		    self.reward[b][2] = self.reward_all_live/2
+		elseif self.step_counter < time_target[b][2] or self.step_counter > time_target[b][2]+2 then
+		    self.reward[b][2] = - self.reward_all_live
 		end
 	        self.terminal[b] = 1
 	    end
@@ -218,12 +218,7 @@ function HierarchyPlan:getReward(a_t,time_target)
         end
 
     end
---[[
-print(self.step_counter)
---target lever_pos agent_pos a_t reward
-action= torch.cat(time_target[{{},{1}}]:squeeze(),self.lever_pos[{{},{1}}]:squeeze():type(self.opt.dtype),2):cat(self.agent_pos[{{},{1}}]:squeeze():type(self.opt.dtype),2):cat(a_t[{{},{1}}]:squeeze(),2):cat(self.reward[{{},{1}}]:squeeze():type(self.opt.dtype),2):cat(time_target[{{},{2}}]:squeeze(),2):cat(self.lever_pos[{{},{1}}]:squeeze():type(self.opt.dtype),2):cat(self.agent_pos[{{},{2}}]:squeeze():type(self.opt.dtype),2):cat(a_t[{{},{2}}]:squeeze(),2):cat(self.reward[{{},{2}}]:squeeze():type(self.opt.dtype),2)
-print(action)
---]]
+
     return self.reward:clone(), self.terminal:clone()
 end
 
@@ -283,36 +278,20 @@ end
 function HierarchyPlan:imitateAction()
     local step = self.step_counter
     local pAction = torch.zeros(self.opt.bs, self.opt.game_nagents):type(self.opt.dtype)
-
+    
     for b = 1, self.opt.bs do
         for agent = 1, self.opt.game_nagents do
-
-            if (step == 1) then --if on first step, stay in place so comm occurs
-                pAction[b][agent] = 1 
-            elseif (step <= self.opt.nsteps) then
+            if (step <= self.opt.nsteps) then
                 if (self.agent_pos[b][agent] < self.lever_pos[b][agent]) then --if agent is behind lever, move forward
                     pAction[b][agent] = 2 
-                elseif (self.agent_pos[b][agent] > self.lever_pos[b][agent]) then --if agent is ahead of lever, stay
-                    pAction[b][agent] = 1
-                elseif (self.agent_pos[b][agent] == self.lever_pos[b][agent]) then --if agent at lever, functionality only for 2 agents
-                    if (agent == 1) then
-                        if (self.agent_pos[b][2] == self.lever_pos[b][2] and self.lever_pos[b][1] ~= 1 and self.lever_pos[b][2] ~= 1 ) then
-                            pAction[b][agent] = 3 --pull if the other agent is at its lever too
-                        else
-                            pAction[b][agent] = 1 --stay put
-                        end
-                    elseif (agent == 2) then
-                        if (self.agent_pos[b][1] == self.lever_pos[b][1] and self.lever_pos[b][1] ~= 1 and self.lever_pos[b][2] ~= 1) then
-                            pAction[b][agent] = 3 --pull if the other agent is at its lever too
-                        else
-                            pAction[b][agent] = 1 --stay put
-                        end
+                elseif (self.agent_pos[b][agent] == self.lever_pos[b][agent]) then --if agent at lever
+                    if (step == self.time_target[b][1]+1) then
+                        pAction[b][agent] = 3 --pull if at the correct time
                     else
-                        print("the number of agents should only be 2, check opt")
+                        pAction[b][agent] = 1 --stay put, until its the time to pull
                     end
                 end
             end
-
         end
     end
 

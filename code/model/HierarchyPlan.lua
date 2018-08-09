@@ -9,6 +9,7 @@ local util = require 'include.util'
 local LSTM = require 'module.LSTM'
 local GRU = require 'module.GRU'
 require 'module.rmsprop'
+require 'module.rmspropm'
 require 'module.GaussianNoise'
 require 'module.Binarize'
 
@@ -16,7 +17,15 @@ return function(opt)
 
     local exp = {}
 
-    function exp.optim(iter)
+    function exp.upper_optim(iter)
+        -- iter can be used for learning rate decay
+        -- local optimfunc = optim.adam
+        local optimfunc = optim.rmspropm
+        local optimconfig = { learningRate = opt.learningrate }
+        return optimfunc, optimconfig
+    end
+
+    function exp.lower_optim(iter)
         -- iter can be used for learning rate decay
         -- local optimfunc = optim.adam
         local optimfunc = optim.rmsprop
@@ -210,14 +219,10 @@ return function(opt)
             for b = 1, opt.bs do
 		lever_pos = game.lever_pos[b]
 		time_target = game.time_target[b]
-		if lever_pos[1] == time_target[1]+2 then 
-                    r_god = r_god + game.reward_all_live/4
-		elseif lever_pos[1] <= time_target[1]+1 then
+		if lever_pos[1] <= time_target[1]+1 then
                     r_god = r_god + game.reward_all_live/2
 		end
-		if lever_pos[2] == time_target[2]+2 then 
-                    r_god = r_god + game.reward_all_live/4
-		elseif lever_pos[2] <= time_target[2]+1 then
+		if lever_pos[2] <= time_target[2]+1 then
                     r_god = r_god + game.reward_all_live/2
 		end
             end

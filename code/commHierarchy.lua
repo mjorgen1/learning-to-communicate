@@ -156,7 +156,8 @@ model.evaluate(model.lower_agent_target)
 local upper_params, upper_gradParams, lower_params, lower_gradParams, lower_params_target, _ = model.getParameters()
 
 -- Optimisation function
-local optim_func, upper_optim_config = model.optim()
+local upper_optim_func, upper_optim_config = model.upper_optim()
+local lower_optim_func, lower_optim_config = model.lower_optim()
 local optim_state = {}
 
 -- Initialise agents
@@ -244,15 +245,15 @@ print('run episode '.. e)
 
     -- Reset game
     game:reset(e)
-   -- local im_learning = false
-    -- allow imitation learning every even numbered episodes
-   -- if(opt.imitation_Learning == 1) then
-    --    if(e % 2 == 0  ) then
-    --        im_learning = true
-    --    else
-    --        im_learning = false
-    --    end
-    --end
+    local im_learning = false
+    --allow imitation learning every even numbered episodes
+    if(opt.imitation_Learning == 1) then
+        if(e % 2 == 0  ) then
+            im_learning = true
+        else
+            im_learning = false
+        end
+    end
 
     -- Initialise episode
     local step = 1
@@ -561,6 +562,10 @@ print('run episode '.. e)
                 print(lower_episode[step].a_t[1][i])
             end
 
+	    --asking for adviced action from game
+            local adviced_actions = game:imitateAction()
+
+
             for b = 1, opt.bs do
 
                 -- Epsilon-greedy action picking
@@ -574,6 +579,10 @@ print('run episode '.. e)
                             lower_episode[step].a_t[b][i] = torch.random(q_t[b]:size(1))
                         end
                     end
+                end
+		-- use adviced action for imitation learning
+                if not test_mode and im_learning then
+                    lower_episode[step].a_t[b][i] = adviced_actions[b][i]
                 end
             end
         end
@@ -898,8 +907,8 @@ for e = 1, opt.nepisodes do
         return nil, lower_gradParams
     end
 
-    optim_func(upper_feval, upper_params, upper_optim_config, optim_state)
-    optim_func(lower_feval, lower_params, lower_optim_config, optim_state)
+    upper_optim_func(upper_feval, upper_params, upper_optim_config, optim_state)
+    lower_optim_func(lower_feval, lower_params, lower_optim_config, optim_state)
 
     -- Gradient statistics
     if e % opt.step == 0 then
