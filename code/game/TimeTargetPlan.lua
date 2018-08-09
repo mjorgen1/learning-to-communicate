@@ -204,5 +204,28 @@ function SingleLeverPlan:getState()
     return state
 end
 
+function SingleLeverPlan:imitateAction()
+    local step = self.step_counter
+    local pAction = torch.zeros(self.opt.bs, self.opt.game_nagents):type(self.opt.dtype)
+    
+    for b = 1, self.opt.bs do
+        for agent = 1, self.opt.game_nagents do
+            if (step <= self.opt.nsteps) then
+                if (self.agent_pos[b][agent] < self.lever_pos[b][agent]) then --if agent is behind lever, move forward
+                    pAction[b][agent] = 2 
+                elseif (self.agent_pos[b][agent] == self.lever_pos[b][agent]) then --if agent at lever
+                    if (step == self.time_target[b][1]+1) then
+                        pAction[b][agent] = 3 --pull if at the correct time
+                    else
+                        pAction[b][agent] = 1 --stay put, until its the time to pull
+                    end
+                end
+            end
+        end
+    end
+
+    return pAction
+end
+
 return SingleLeverPlan
 
