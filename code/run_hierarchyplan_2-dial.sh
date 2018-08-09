@@ -1,0 +1,29 @@
+#!/bin/bash
+th commHierarchy.lua \
+-game HierarchyPlan \
+-game_nagents 2 \
+-game_upper_action_space 4 \
+-game_lower_action_space 3 \
+-game_comm_limited 1 \
+-game_comm_bits 4 \
+-game_comm_sigma 20 \
+-nsteps 5 \
+-gamma 0.6 \
+-model_dial 1 \
+-model_bn 1 \
+-model_know_share 1 \
+-model_action_aware 1 \
+-model_upper_rnn_size 200 \
+-model_upper_rnn_layers 2 \
+-model_lower_rnn_size 600 \
+-model_lower_rnn_layers 2 \
+-model_rnn 'lstm' \
+-bs 32 \
+-learningrate 0.0005 \
+-nepisodes 31250 \
+-step 100 \
+-step_test 10 \
+-step_target 100 \
+-eps 0.01 \
+-model_dropout 0.3 \
+-cuda 1
