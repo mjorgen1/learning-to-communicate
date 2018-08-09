@@ -8,12 +8,12 @@ th commWith2States.lua \
 -game_comm_sigma 20 \
 -nsteps 8 \
 -gamma 0.6 \
--model_dial 1 \
+-model_dial 0 \
 -model_bn 1 \
 -model_know_share 1 \
 -model_action_aware 1 \
--model_rnn_size 448 \
--model_rnn_layers 5 \
+-model_rnn_size 512 \
+-model_rnn_layers 3 \
 -model_rnn 'lstm' \
 -bs 32 \
 -learningrate 0.0005 \

@@ -121,9 +121,9 @@ else
     opt.dtype = 'torch.FloatTensor'
 end
 
-if opt.model_comm_narrow == 0 and opt.game_comm_bits > 0 then
-    opt.game_comm_bits = 2 ^ opt.game_comm_bits
-end
+--if opt.model_comm_narrow == 0 and opt.game_comm_bits > 0 then
+--    opt.game_comm_bits = 2 ^ opt.game_comm_bits
+--end
 
 -- Initialise game
 local game = (require('game.' .. opt.game))(opt)
@@ -287,7 +287,6 @@ local function run_episode(opt, game, model, agent, e, test_mode)
                             comm_lim[{ { b } }] = comm[{ { b }, unpack(comm_limited[b]) }]
                         end
                     end
-
                     table.insert(agent[i].input[step], comm_lim)
 
 		    if test_mode then
@@ -401,12 +400,15 @@ local function run_episode(opt, game, model, agent, e, test_mode)
 
             -- Store actions
             episode[step].a_t[{ {}, { i } }] = max_a:type(opt.dtype)
+
+            if opt.model_dial == 0 and opt.game_comm_bits > 0 then
+                episode[step].a_comm_t[{ {}, { i } }] = max_a_comm:type(opt.dtype)
+            end
             if test_mode then --prints out the actions for the test mode
                 print("The action for agent " .. i .. " is ")
                 print(episode[step].a_t[1][i])
-            end
-            if opt.model_dial == 0 and opt.game_comm_bits > 0 then
-                episode[step].a_comm_t[{ {}, { i } }] = max_a_comm:type(opt.dtype)
+		print("Communication of agent " .. i .. " is ")
+		print(episode[step].a_comm_t[1][i])
             end
 
             for b = 1, opt.bs do

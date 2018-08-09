@@ -186,7 +186,11 @@ return function(opt)
             -- God strategy
             local r_god = 0
             for b = 1, opt.bs do
-                r_god = r_god + 2*game.reward_all_live
+		lever_pos = game.lever_pos[b]
+		time_target = game.time_target[b]
+		if lever_pos[1] <= time_target[1]+1 then
+                    r_god = r_god + game.reward_all_live
+		end
             end
             stats.test_god[test_idx] = r_god / opt.bs
         end

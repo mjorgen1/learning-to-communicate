@@ -36,7 +36,7 @@ function SimplePlan:__init(opt)
     self.reward_all_die = -1 + self.opt.game_reward_shift
     self.reward_small_off = -0.2
 
-    self.reward_option =  'optimisable' --'potential' 'time-changing' 'easy'
+    self.reward_option =  'potential'--'optimisable' -- 'time-changing' 'easy'
 
     -- Spawn new game
     self:reset(1)
@@ -94,8 +94,8 @@ function SimplePlan:getActionRange(step, agent)
         for b = 1, self.opt.bs do
             if self.agent_pos[b][agent] == self.lever_pos[b][agent] and self.lever_pos[b][agent] ~= 1 then
                 range[b] = { { b }, { 1, bound } }
-            --elseif self.step_counter == 1 then
-                --range[b] = { { b }, { 1 , 1} }
+            elseif self.step_counter == 1 then
+                range[b] = { { b }, { 1 , 1} }
 	        else
                 range[b] = { { b }, { 1 , bound -1} }
             end
@@ -107,6 +107,8 @@ function SimplePlan:getActionRange(step, agent)
         for b = 1, self.opt.bs do
             if self.agent_pos[b][agent] == self.lever_pos[b][agent] and self.lever_pos[b][agent] ~= 1 then
                 range[b] = { { b }, { 1, bound } }
+            --elseif self.step_counter == 1 then
+            --    range[b] = { { b }, { 1 , 1} }
             else
                 range[b] = { { b }, { bound - 1 } } 
             end
@@ -135,6 +137,7 @@ function SimplePlan:getCommLimited(step, i)
                     range[b] = { 1, {} }
 	        else
                     range[b] = 0
+
                 end
 	    else
                 range[b] = 0
@@ -142,19 +145,7 @@ function SimplePlan:getCommLimited(step, i)
         end
         return range
     else                                   --no commLimited
-        local range = {}
-
-        -- Get range per batch
-        for b = 1, self.opt.bs do
-            if step > 1 and i == 1 then
-                range[b] = { 2, {} }
-            elseif step > 1 and i == 2 then
-                range[b] = { 1, {} }
-	    else
-                range[b] = 0
-            end
-        end
-        return range
+        return nil
     end
     --3 comm actions for a_t 
 end
@@ -238,8 +229,11 @@ function SimplePlan:getReward(a_t,episode)
 
 	        --reward for the single agent giving a hint on the right path
 	        if self.terminal[b]==0 and self.agent_pos[b][1] == 1 and self.agent_pos[b][2] == 1 then
-		        if a_t[b][1]~=a_t[b][2] then
-		            self.reward[b] = self.reward[b] -1 * self.pot_weight
+		        if a_t[b][1] == 2 then
+		            self.reward[b][1] = self.reward[b][1] -1 * self.pot_weight
+			end
+			if a_t[b][2] == 2 then
+		            self.reward[b][2] = self.reward[b][2] -1 * self.pot_weight
 		        end
 	        elseif self.terminal[b]==0 then
 

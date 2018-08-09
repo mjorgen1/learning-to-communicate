@@ -72,7 +72,7 @@ function SingleLeverPlan:reset()
     for b = 1, self.opt.bs do
 	for agent = 1, self.opt.game_nagents do
             self.lever_pos[{ { b }, { agent } }] = torch.random(2,4)
-	    self.time_target[{{b},{agent}}] = self.lever_pos[b][agent]-2 + torch.random(1,3)
+	    self.time_target[{{b},{agent}}] = torch.random(1,4)
         end
 
     end
@@ -145,8 +145,8 @@ function SingleLeverPlan:getReward(a_t,episode)
 	if self.terminal[b]==0 and a_t[b][1] == 3 then -- did pull
 	    if self.step_counter == self.time_target[b][1]+1 then
 		self.reward[b][1] = self.reward_all_live
-	    elseif self.step_counter == self.time_target[b][1] or self.step_counter == self.time_target[b][1]+2 then
-		self.reward[b][1] = self.reward_all_live/2
+	    elseif self.step_counter < self.time_target[b][1] or self.step_counter > self.time_target[b][1]+2 then
+		self.reward[b][1] = - self.reward_all_live/2
 	    end
 	    self.terminal[b] = 1
 	    --print(self.reward[b][1] .. ' '.. self.lever_pos[b][1])
