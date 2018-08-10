@@ -13,8 +13,8 @@ th commHierarchy.lua \
 -model_bn 1 \
 -model_know_share 1 \
 -model_action_aware 1 \
--model_upper_rnn_size 512 \
--model_upper_rnn_layers 2 \
+-model_upper_rnn_size 228 \
+-model_upper_rnn_layers 1 \
 -model_lower_rnn_size 512 \
 -model_lower_rnn_layers 1 \
 -model_rnn 'lstm' \
@@ -24,9 +24,9 @@ th commHierarchy.lua \
 -step 100 \
 -step_test 10 \
 -step_target 100 \
--upper_eps 0.2 \
+-upper_eps 0.05 \
 -lower_eps 0.05 \
--upper_model_dropout 0.5 \
+-upper_model_dropout 0.3 \
 -lower_model_dropout 0.5 \
 -imitation_Learning 1 \
 -cuda 1

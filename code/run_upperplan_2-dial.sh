@@ -1,0 +1,26 @@
+#!/bin/bash
+th comm.lua \
+-game UpperPlan \
+-game_nagents 2 \
+-game_action_space 3 \
+-game_comm_limited 1 \
+-game_comm_bits 3 \
+-game_comm_sigma 1 \
+-nsteps 2 \
+-gamma 0.6 \
+-model_dial 1 \
+-model_bn 1 \
+-model_know_share 1 \
+-model_action_aware 1 \
+-model_rnn_size 228 \
+-model_rnn_layers 1 \
+-model_rnn 'lstm' \
+-bs 32 \
+-learningrate 0.0005 \
+-nepisodes 31250 \
+-step 100 \
+-step_test 10 \
+-step_target 100 \
+-eps 0.05 \
+-model_dropout 0.3 \
+-cuda 1
