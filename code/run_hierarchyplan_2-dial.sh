@@ -2,12 +2,12 @@
 th commHierarchy.lua \
 -game HierarchyPlan \
 -game_nagents 2 \
--game_upper_action_space 4 \
+-game_upper_action_space 3 \
 -game_lower_action_space 3 \
 -game_comm_limited 1 \
 -game_comm_bits 3 \
--game_comm_sigma 40 \
--nsteps 5 \
+-game_comm_sigma 1 \
+-nsteps 4 \
 -gamma 0.5 \
 -model_dial 1 \
 -model_bn 1 \
@@ -24,7 +24,7 @@ th commHierarchy.lua \
 -step 100 \
 -step_test 10 \
 -step_target 100 \
--upper_eps 0.05 \
+-upper_eps 0.2 \
 -lower_eps 0.05 \
 -upper_model_dropout 0.5 \
 -lower_model_dropout 0.5 \

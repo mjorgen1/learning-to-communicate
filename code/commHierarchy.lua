@@ -409,14 +409,14 @@ print('run episode '.. e)
             if opt.model_dial == 0 and opt.game_comm_bits > 0 then
                 upper_episode[step].a_comm_t[{ {}, { i } }] = max_a_comm:type(opt.dtype)
             end
-
             for b = 1, opt.bs do
 
                 -- Epsilon-greedy action picking
-                if not test_mode and not im_learning then
+                if not test_mode then
                     if opt.model_dial == 0 then
                         -- Random action
                         if torch.uniform() < opt.upper_eps then
+
                             if action_range then
                                 if action_range[b][2][1] > 0 then
                                     local a_range = agent[i].upper_range[{ action_range[b][2] }]
@@ -781,13 +781,13 @@ for e = 1, opt.nepisodes do
             stats.lower_td_err[(e - 1) % opt.step + 1] = stats.lower_td_err[(e - 1) % opt.step + 1] + 0.5 * lower_td_err:clone():pow(2):mean()
 
             -- Backward pass
-            local grad = model.lower_agent[model.id(step, i)]:backward(agent[i].lower_input[step], {
+            local lower_grad = model.lower_agent[model.id(step, i)]:backward(agent[i].lower_input[step], {
                 agent[i].lower_d_state[step_back - 1],
                 lower_d_err
             })
 
             --'state' is the 3rd input, so we can extract d_state
-            agent[i].lower_d_state[step_back] = grad[6]
+            agent[i].lower_d_state[step_back] = lower_grad[6]
 
             --For dial we need to write add the derivatives w/ respect to the incoming messages to the d_comm tracker
         end
@@ -855,17 +855,17 @@ for e = 1, opt.nepisodes do
             end
 
             -- Backward pass
-            local grad = model.upper_agent[model.id(step, i)]:backward(agent[i].upper_input[step], {
+            local upper_grad = model.upper_agent[model.id(step, i)]:backward(agent[i].upper_input[step], {
                 agent[i].upper_d_state[step_back - 1],
                 upper_d_err
             })
 
             --'state' is the 3rd input, so we can extract d_state
-            agent[i].upper_d_state[step_back] = grad[3]
+            agent[i].upper_d_state[step_back] = upper_grad[3]
 
             --For dial we need to write add the derivatives w/ respect to the incoming messages to the d_comm tracker
             if opt.model_dial == 1 then
-                local comm_grad = grad[4]
+                local comm_grad = upper_grad[4]
 
                 local comm_lim = {}
                 for b = 1, opt.bs do
@@ -911,7 +911,7 @@ for e = 1, opt.nepisodes do
         return nil, lower_gradParams
     end
 
-    upper_optim_config.learningRate = opt.learningrate * lower_episode.r:mean(1):mean(2):type(opt.dtype):squeeze()
+    --upper_optim_config.learningRate = opt.learningrate * lower_episode.r:mean(1):mean(2):type(opt.dtype):squeeze()
 print(lower_episode.r:mean(1):mean(2):type(opt.dtype):squeeze())
 
     upper_optim_func(upper_feval, upper_params, upper_optim_config, optim_state)

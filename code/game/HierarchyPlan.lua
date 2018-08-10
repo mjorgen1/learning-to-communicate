@@ -74,11 +74,11 @@ function HierarchyPlan:reset(episode)
     -- Whos HierarchyPlan is at which position? 
     self.lever_pos = torch.zeros(self.opt.bs, self.opt.game_nagents)
 
-    lever_pos_distribution = {2,2,3,4}
+    lever_pos_distribution = {2,2,2,2,2,2,2,2,3,3,3,4}
 
     for b = 1, self.opt.bs do
 	for agent = 1, self.opt.game_nagents do
-	    index = torch.random(1,4) 
+	    index = torch.random(1,12) 
 	    self.lever_pos[{ { b }, { agent } }] = lever_pos_distribution[index]
         end
 
@@ -176,8 +176,8 @@ function HierarchyPlan:getReward(a_t,time_target)
 	    --cooperative reward for successfully pulling the lever
 	    elseif self.terminal[b]==0 and (a_t[b][1] == 3 and a_t[b][2] == 3) then
 	        earliest = torch.max(self.lever_pos[b])
-	        if (self.step_counter >= earliest) then
-               	    self.upper_reward[b] = self.reward_all_live * 1/(self.step_counter-earliest+1)
+	        if (self.step_counter == earliest) then
+               	    self.upper_reward[b] = self.reward_all_live
 	        end
 
 		if self.step_counter == time_target[b][1]+1 then

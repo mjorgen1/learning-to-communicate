@@ -279,9 +279,9 @@ local function run_episode(opt, game, model, agent, e, test_mode)
                     table.insert(agent[i].input[step], comm_lim)
 
 		    if test_mode then
-                	--print("\n")
-                	--print("The comm sent to agent".. i)
-	                --print(comm_lim[1])
+                	print("\n")
+                	print("The comm sent to agent".. i)
+	                print(comm_lim[1])
 
 		    end
                 else
@@ -335,7 +335,7 @@ local function run_episode(opt, game, model, agent, e, test_mode)
 
             --Print the communication for each agent
             if test_mode then
-                --print("Agent " .. i .. "'s Current state: " .. episode[step].s_t[i][1])
+                print("Agent " .. i .. "'s Current state: " .. episode[step].s_t[i][1]:squeeze())
             --elseif not test_mode then
             --    print("Test_mode is " .. (test_mode and 'true' or 'false') .. " and this is the comm for agent".. i)
             --    print(comm[1]) 
@@ -391,8 +391,8 @@ local function run_episode(opt, game, model, agent, e, test_mode)
             -- Store actions
             episode[step].a_t[{ {}, { i } }] = max_a:type(opt.dtype)
             if test_mode then --prints out the actions for the test mode
-                --print("The action for agent " .. i .. " is ")
-                --print(episode[step].a_t[1][i])
+                print("The action for agent " .. i .. " is ")
+                print(episode[step].a_t[1][i])
             end
             if opt.model_dial == 0 and opt.game_comm_bits > 0 then
                 episode[step].a_comm_t[{ {}, { i } }] = max_a_comm:type(opt.dtype)
@@ -473,9 +473,9 @@ local function run_episode(opt, game, model, agent, e, test_mode)
         episode[step].r_t, episode[step].terminal = game:step(episode[step].a_t,e)
 	
 	if test_mode then
-	   -- print('reward achieved: ')
-	   -- print(episode[step].r_t[1])
-	   -- print('terminated: '.. episode[step].terminal[1])
+	    print('reward achieved: ')
+	    print(episode[step].r_t[1])
+	    print('terminated: '.. episode[step].terminal[1])
 	end
 
         -- Accumulate steps (not for +1 step)
