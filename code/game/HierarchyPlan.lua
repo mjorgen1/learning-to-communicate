@@ -32,7 +32,7 @@ function HierarchyPlan:__init(opt)
     self.opt = opt
 
     -- Rewards
-    self.reward_all_live = 20 + self.opt.game_reward_shift
+    self.reward_all_live = 1 + self.opt.game_reward_shift
     self.reward_all_die = -1 + self.opt.game_reward_shift
     self.reward_small_off = -0.2
 
@@ -159,16 +159,16 @@ function HierarchyPlan:getReward(a_t,time_target)
 	    if self.terminal[b]==0 and a_t[b][1] == 3 and a_t[b][2] ~= 3 then
 		if self.step_counter == time_target[b][1]+1 then
 		    self.reward[b][1] = self.reward_all_live
-		elseif self.step_counter == time_target[b][1] or self.step_counter == time_target[b][1]+2 then
-		    self.reward[b][1] = self.reward_all_live/2
+		elseif self.step_counter < time_target[b][1] or self.step_counter > time_target[b][1]+2 then
+		    self.reward[b][1] = -self.reward_all_live
 		end
 		self.pulled_lever[b][1] = 1
 
             elseif self.terminal[b]==0 and a_t[b][1] ~= 3 and a_t[b][2] == 3 then
 		if self.step_counter == time_target[b][2]+1 then
 		    self.reward[b][2] = self.reward_all_live
-		elseif self.step_counter == time_target[b][2] or self.step_counter == time_target[b][2]+2 then
-		    self.reward[b][2] = self.reward_all_live/2
+		elseif self.step_counter < time_target[b][2] or self.step_counter > time_target[b][2]+2 then
+		    self.reward[b][2] = -self.reward_all_live
 		end
 		self.pulled_lever[b][2] = 1
 
@@ -199,15 +199,15 @@ function HierarchyPlan:getReward(a_t,time_target)
 	    if (self.pulled_lever[b][1] == 1 and a_t[b][2] == 3) then
 		if self.step_counter == time_target[b][2]+1 then
 		    self.reward[b][2] = self.reward_all_live
-		elseif self.step_counter == time_target[b][2] or self.step_counter == time_target[b][2]+2 then
-		    self.reward[b][2] = self.reward_all_live/2
+		elseif self.step_counter < time_target[b][2] or self.step_counter > time_target[b][2]+2 then
+		    self.reward[b][2] = -self.reward_all_live
 		end
 		self.terminal[b] = 1
 	    elseif (a_t[b][1] == 3 and self.pulled_lever[b][2] == 1) then -- both did pull
 		if self.step_counter == time_target[b][1]+1 then
 		    self.reward[b][1] = self.reward_all_live
-		elseif self.step_counter == time_target[b][1] or self.step_counter == time_target[b][1]+2 then
-		    self.reward[b][1] = self.reward_all_live/2
+		elseif self.step_counter < time_target[b][1] or self.step_counter > time_target[b][1]+2 then
+		    self.reward[b][1] = -self.reward_all_live
 		end
 		self.terminal[b] = 1
 	    end
@@ -259,16 +259,13 @@ function HierarchyPlan:getState()
     local state = {}
 
     for agent = 1, self.opt.game_nagents do
-        state[agent] = torch.Tensor(self.opt.bs,2)
+        state[agent] = torch.Tensor(self.opt.bs,3)
 
         for b = 1, self.opt.bs do
---	    if (self.agent_pos[b][agent] == 1) then
-		state[agent][{{b}, {1}}]= self.lever_pos[b][agent]
---	    else
---		state[agent][{{b}, {1}}]= 1	
---	    end
+	    state[agent][{{b}, {1}}]= self.lever_pos[b][agent]
 	    state[agent][{{b},{2}}]= self.agent_pos[b][agent]
-	    --print(self.agent_pos[b][agent])
+	    state[agent][{{b},{3}}]= self.step_counter
+
         end
     end
 

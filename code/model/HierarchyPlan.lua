@@ -286,13 +286,13 @@ return function(opt)
             model_rnn = LSTM(opt.model_upper_rnn_size,
                 opt.model_upper_rnn_size,
                 opt.model_upper_rnn_layers,
-                opt.model_dropout,
+                opt.upper_model_dropout,
                 opt.model_bn == 1)
         elseif opt.model_rnn == 'gru' then
             model_rnn = GRU(opt.model_upper_rnn_size,
                 opt.model_upper_rnn_size,
                 opt.model_upper_rnn_layers,
-                opt.model_dropout)
+                opt.upper_model_dropout)
         end
 
         -- use default initialization for convnet, but uniform -0.08 to .08 for RNN:
@@ -303,7 +303,7 @@ return function(opt)
 
         -- Output
         local model_out = nn.Sequential()
-        if opt.model_dropout > 0 then model_out:add(nn.Dropout(opt.model_dropout)) end
+        if opt.upper_model_dropout > 0 then model_out:add(nn.Dropout(opt.upper_model_dropout)) end
         model_out:add(nn.Linear(opt.model_upper_rnn_size, opt.model_upper_rnn_size))
         model_out:add(nn.ReLU(true))
         model_out:add(nn.Linear(opt.model_upper_rnn_size, opt.game_upper_action_space_total))
@@ -401,6 +401,8 @@ return function(opt)
         model_state_2:add(nn.LookupTable(opt.nsteps+1, opt.model_lower_rnn_size))
         local model_state_3 = nn.Sequential()
         model_state_3:add(nn.LookupTable(opt.nsteps+1, opt.model_lower_rnn_size))
+        local model_state_4 = nn.Sequential()
+        model_state_4:add(nn.LookupTable(opt.nsteps+1, opt.model_lower_rnn_size))
 
         -- RNN
         local model_rnn
@@ -408,13 +410,13 @@ return function(opt)
             model_rnn = LSTM(opt.model_lower_rnn_size,
                 opt.model_lower_rnn_size,
                 opt.model_lower_rnn_layers,
-                opt.model_dropout,
+                opt.lower_model_dropout,
                 opt.model_bn == 1)
         elseif opt.model_rnn == 'gru' then
             model_rnn = GRU(opt.model_lower_rnn_size,
                 opt.model_lower_rnn_size,
                 opt.model_lower_rnn_layers,
-                opt.model_dropout)
+                opt.lower_model_dropout)
         end
 
         -- use default initialization for convnet, but uniform -0.08 to .08 for RNN:
@@ -425,7 +427,7 @@ return function(opt)
 
         -- Output
         local model_out = nn.Sequential()
-        if opt.model_dropout > 0 then model_out:add(nn.Dropout(opt.model_dropout)) end
+        if opt.lower_model_dropout > 0 then model_out:add(nn.Dropout(opt.lower_model_dropout)) end
         model_out:add(nn.Linear(opt.model_lower_rnn_size, opt.model_lower_rnn_size))
         model_out:add(nn.ReLU(true))
         model_out:add(nn.Linear(opt.model_lower_rnn_size, opt.game_lower_action_space_total))
@@ -434,6 +436,7 @@ return function(opt)
         local in_state_1 = nn.Identity()()
 	local in_state_2 = nn.Identity()()
 	local in_state_3 = nn.Identity()()
+	local in_state_4 = nn.Identity()()
         local in_id = nn.Identity()()
         local in_rnn_state = nn.Identity()()
 
@@ -443,6 +446,7 @@ return function(opt)
             model_state_1(in_state_1),
             model_state_2(in_state_2),
             model_state_3(in_state_3),
+            model_state_4(in_state_4),
             nn.LookupTable(opt.game_nagents, opt.model_lower_rnn_size)(in_id)
         }
 
@@ -476,7 +480,7 @@ return function(opt)
         local proc_out = model_out(rnn_out)
 
         -- Create model
-        local model_inputs = { in_state_1, in_state_2, in_state_3, in_id, in_rnn_state }
+        local model_inputs = { in_state_1, in_state_2, in_state_3, in_state_4, in_id, in_rnn_state }
         local model_outputs = { rnn_state, proc_out }
 
         if opt.model_action_aware == 1 then

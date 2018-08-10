@@ -407,8 +407,8 @@ local function run_episode(opt, game, model, agent, e, test_mode)
             if test_mode then --prints out the actions for the test mode
                 print("The action for agent " .. i .. " is ")
                 print(episode[step].a_t[1][i])
-		print("Communication of agent " .. i .. " is ")
-		print(episode[step].a_comm_t[1][i])
+		--print("Communication of agent " .. i .. " is ")
+		--print(episode[step].a_comm_t[1][i])
             end
 
             for b = 1, opt.bs do

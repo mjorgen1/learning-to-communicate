@@ -28,7 +28,8 @@ cmd:option('-cuda', 0, 'cuda')
 
 -- rl
 cmd:option('-gamma', 1, 'discount factor')
-cmd:option('-eps', 0.05, 'epsilon-greedy policy')
+cmd:option('-upper_eps', 0.05, 'epsilon-greedy policy')
+cmd:option('-lower_eps', 0.05, 'epsilon-greedy policy')
 
 -- model
 cmd:option('-model_rnn', 'gru', 'rnn type')
@@ -40,7 +41,8 @@ cmd:option('-model_upper_rnn_size', 128, 'rnn size')
 cmd:option('-model_upper_rnn_layers', 2, 'rnn layers')
 cmd:option('-model_lower_rnn_size', 128, 'rnn size')
 cmd:option('-model_lower_rnn_layers', 2, 'rnn layers')
-cmd:option('-model_dropout', 0, 'dropout')
+cmd:option('-upper_model_dropout', 0, 'dropout')
+cmd:option('-lower_model_dropout', 0, 'dropout')
 cmd:option('-model_bn', 1, 'batch normalisation')
 cmd:option('-model_target', 1, 'use a target network')
 cmd:option('-model_avg_q', 1, 'avearge q functions')
@@ -414,7 +416,7 @@ print('run episode '.. e)
                 if not test_mode and not im_learning then
                     if opt.model_dial == 0 then
                         -- Random action
-                        if torch.uniform() < opt.eps then
+                        if torch.uniform() < opt.upper_eps then
                             if action_range then
                                 if action_range[b][2][1] > 0 then
                                     local a_range = agent[i].upper_range[{ action_range[b][2] }]
@@ -427,7 +429,7 @@ print('run episode '.. e)
                         end
 
                         -- Random communication
-                        if opt.game_comm_bits > 0 and torch.uniform() < opt.eps then
+                        if opt.game_comm_bits > 0 and torch.uniform() < opt.upper_eps then
                             if action_range then
                                 if action_range_comm[b][2][1] > 0 then
                                     local a_range = agent[i].upper_range[{ action_range_comm[b][2] }]
@@ -440,7 +442,7 @@ print('run episode '.. e)
                         end
 
                     else
-                        if torch.uniform() < opt.eps then
+                        if torch.uniform() < opt.upper_eps then
                             if action_range then
                                 local a_range = agent[i].upper_range[{ action_range[b][2] }]
                                 local a_idx = torch.random(a_range:nElement())
@@ -505,6 +507,7 @@ print('run episode '.. e)
 		time_target[{{},{i}}]:squeeze():type(opt.dtype),
                 lower_episode[step].s_t[i][{{},{1}}]:squeeze():type(opt.dtype),
                 lower_episode[step].s_t[i][{{},{2}}]:squeeze():type(opt.dtype),
+                lower_episode[step].s_t[i][{{},{3}}]:squeeze():type(opt.dtype),
                 agent[i].id,
                 agent[i].lower_state[step - 1]
             }
@@ -570,7 +573,7 @@ print('run episode '.. e)
 
                 -- Epsilon-greedy action picking
                 if not test_mode and not im_learning then
-                    if torch.uniform() < opt.eps then
+                    if torch.uniform() < opt.lower_eps then
                         if action_range then
                             local a_range = agent[i].lower_range[{ action_range[b][2] }]
                             local a_idx = torch.random(a_range:nElement())
@@ -624,8 +627,9 @@ print('run episode '.. e)
                     agent[i].lower_input[step][2],
                     agent[i].lower_input[step][3],
                     agent[i].lower_input[step][4],
+                    agent[i].lower_input[step][5],
                     agent[i].lower_state_target[step - 1],
-                    agent[i].lower_input[step][6],
+                    agent[i].lower_input[step][7],
                 }
 
                 -- Forward target
@@ -783,7 +787,7 @@ for e = 1, opt.nepisodes do
             })
 
             --'state' is the 3rd input, so we can extract d_state
-            agent[i].lower_d_state[step_back] = grad[5]
+            agent[i].lower_d_state[step_back] = grad[6]
 
             --For dial we need to write add the derivatives w/ respect to the incoming messages to the d_comm tracker
         end
@@ -906,6 +910,9 @@ for e = 1, opt.nepisodes do
 
         return nil, lower_gradParams
     end
+
+    upper_optim_config.learningRate = opt.learningrate * lower_episode.r:mean(1):mean(2):type(opt.dtype):squeeze()
+print(lower_episode.r:mean(1):mean(2):type(opt.dtype):squeeze())
 
     upper_optim_func(upper_feval, upper_params, upper_optim_config, optim_state)
     lower_optim_func(lower_feval, lower_params, lower_optim_config, optim_state)

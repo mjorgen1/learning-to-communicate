@@ -5,10 +5,10 @@ th commHierarchy.lua \
 -game_upper_action_space 4 \
 -game_lower_action_space 3 \
 -game_comm_limited 1 \
--game_comm_bits 4 \
--game_comm_sigma 20 \
+-game_comm_bits 3 \
+-game_comm_sigma 40 \
 -nsteps 5 \
--gamma 0.6 \
+-gamma 0.5 \
 -model_dial 1 \
 -model_bn 1 \
 -model_know_share 1 \
@@ -16,7 +16,7 @@ th commHierarchy.lua \
 -model_upper_rnn_size 512 \
 -model_upper_rnn_layers 2 \
 -model_lower_rnn_size 512 \
--model_lower_rnn_layers 2 \
+-model_lower_rnn_layers 1 \
 -model_rnn 'lstm' \
 -bs 32 \
 -learningrate 0.0005 \
@@ -24,7 +24,9 @@ th commHierarchy.lua \
 -step 100 \
 -step_test 10 \
 -step_target 100 \
--eps 0.01 \
--model_dropout 0.3 \
+-upper_eps 0.05 \
+-lower_eps 0.05 \
+-upper_model_dropout 0.5 \
+-lower_model_dropout 0.5 \
 -imitation_Learning 1 \
 -cuda 1
