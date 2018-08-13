@@ -74,11 +74,11 @@ function HierarchyPlan:reset(episode)
     -- Whos HierarchyPlan is at which position? 
     self.lever_pos = torch.zeros(self.opt.bs, self.opt.game_nagents)
 
-    lever_pos_distribution = {2,2,2,2,2,2,2,2,3,3,3,4}
+    lever_pos_distribution = {2,2,2,2,2,2,3,3,3,4}
 
     for b = 1, self.opt.bs do
 	for agent = 1, self.opt.game_nagents do
-	    index = torch.random(1,12) 
+	    index = torch.random(1,10) 
 	    self.lever_pos[{ { b }, { agent } }] = lever_pos_distribution[index]
         end
 

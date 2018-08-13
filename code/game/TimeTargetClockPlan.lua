@@ -145,8 +145,8 @@ function SingleLeverPlan:getReward(a_t,episode)
 	if self.terminal[b]==0 and a_t[b][1] == 3 then -- did pull
 	    if self.step_counter == self.time_target[b][1]+1 then
 		self.reward[b][1] = self.reward_all_live
-	    elseif self.step_counter < self.time_target[b][1] or self.step_counter > self.time_target[b][1]+2 then
-		self.reward[b][1] = - self.reward_all_live/2
+	    --elseif self.step_counter < self.time_target[b][1] or self.step_counter > self.time_target[b][1]+2 then
+		--self.reward[b][1] = - self.reward_all_live/2
 	    end
 	    self.terminal[b] = 1
 	    --print(self.reward[b][1] .. ' '.. self.lever_pos[b][1])

@@ -250,11 +250,11 @@ print('run episode '.. e)
     local im_learning = false
     --allow imitation learning every even numbered episodes
     if(opt.imitation_Learning == 1) then
-        if(e % 2 == 0  ) then
+        --if(e % 2 == 0  ) then
             im_learning = true
-        else
-            im_learning = false
-        end
+        --else
+          --  im_learning = false
+        --end
     end
 
     -- Initialise episode
@@ -828,6 +828,12 @@ for e = 1, opt.nepisodes do
                     if upper_episode[step].a_t[b][i] > 0 then
                         upper_td_err[b] = upper_episode[step].r_t[b][i] - q_t[b][upper_episode[step].a_t[b][i]]
                         upper_d_err[{ { b }, { upper_episode[step].a_t[b][i] } }] = -upper_td_err[b]
+if upper_d_err[b][3] ~= 0 then
+print(b)
+print(upper_episode[step].r_t[b][i])
+print(upper_episode[step].a_t[b][i])
+print(q_t[b][upper_episode[step].a_t[b][i]])
+print(upper_d_err[b]) end
                     else
                         error('Error!')
                     end
@@ -922,6 +928,7 @@ print(lower_episode.r:mean(1):mean(2):type(opt.dtype):squeeze())
         stats.upper_grad_norm = upper_gradParams:norm() / upper_gradParams:nElement() * 1000
         stats.lower_grad_norm = lower_gradParams:norm() / lower_gradParams:nElement() * 1000
     end
+
 
     -- Reset parameters
     upper_gradParams:zero()
