@@ -1,10 +1,10 @@
 #!/bin/bash
-th commWith2States.lua \
+th commBatch2.lua \
 -game WaitingPlan \
 -game_nagents 2 \
 -game_action_space 2 \
 -game_comm_limited 1 \
--game_comm_bits 3 \
+-game_comm_bits 2 \
 -game_comm_sigma 25 \
 -nsteps 8 \
 -gamma 0.6 \
@@ -15,9 +15,9 @@ th commWith2States.lua \
 -model_rnn_size 512 \
 -model_rnn_layers 2 \
 -model_rnn 'lstm' \
--bs 32 \
+-bs 2 \
 -learningrate 0.0005 \
--nepisodes 31250 \
+-nepisodes 100 \
 -step 100 \
 -step_test 10 \
 -step_target 100 \

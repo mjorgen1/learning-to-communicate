@@ -74,11 +74,17 @@ function WaitingPlan:reset(episode)
     lever_pos_distribution = {2,2,3,4}
 
     for b = 1, self.opt.bs do
-	for agent = 1, self.opt.game_nagents do
-	    index = torch.random(1,4) 
-	    self.lever_pos[{ { b }, { agent } }] = lever_pos_distribution[index]
+	    for agent = 1, self.opt.game_nagents do
+            index = torch.random(1,4) 
+            if(b == 1) then
+                self.lever_pos[{ { b }, { agent } }] = lever_pos_distribution[index]
+            elseif (b == 2) then
+                self.lever_pos[{ { b }, { agent } }] = self.lever_pos[{ { 1 }, { agent } }] 
+            else
+                error("can only use waiting plan with 2 batches")
+            end
         end
-
+    
     end
 
 
@@ -151,6 +157,11 @@ function WaitingPlan:getCommLimited(step, i)
     end
 end
 
+function WaitingPlan:getEarliest()
+    local earliest = torch.max(self.lever_pos[1])-1
+    return earliest
+end
+
 function WaitingPlan:getReward(a_t,episode)
     
     self.reward = torch.zeros(self.opt.bs, self.opt.game_nagents)
@@ -170,15 +181,17 @@ function WaitingPlan:getReward(a_t,episode)
 	    end
 
 	elseif self.reward_option == 'optimisable' then
-
-	    if self.terminal[b]==0 and (a_t[b][1] == 2 and a_t[b][2] == 2) then -- both did pull
-		earliest = torch.max(self.lever_pos[b])-1
-                self.reward[b] = self.reward_all_live * 1/(self.step_counter-earliest)
-		self.terminal[b] = 1
+        if(self.agent_pos[b][1] == self.lever_pos[b][1] and self.agent_pos[b][2] == self.lever_pos[b][2]) then
+            self.terminal[b] = 1
+        end
+        if self.terminal[b]==0 and (a_t[b][1] == 2 and a_t[b][2] == 2) then -- both did pull
+            earliest = torch.max(self.lever_pos[1])-1
+            self.reward[b] = self.reward_all_live * 1/(self.step_counter-earliest)
+		    self.terminal[b] = 1
 		--print('both pulled')
 	    elseif self.terminal[b]==0 and (a_t[b][1] == 2 or a_t[b][2] == 2) then
 		--self.reward[b] = self.reward_all_die
-		self.terminal[b] = 1
+		    self.terminal[b] = 1
 		--print('one pulled')
 	    end
 
@@ -252,7 +265,7 @@ function WaitingPlan:step(a_t,episode)
 	    end
         end
     end
-
+   
     return reward, terminal
 end
 
