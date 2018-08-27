@@ -113,6 +113,108 @@ return function(opt)
                 torch.save(filename, { opt, stats, model.agent })
             end
         end
+        --print to tables each episode
+        if opt.filename == '' then
+            exp.save_path = exp.save_path or paths.concat('results', opt.game .. '_' .. opt.game_nagents ..
+                    (opt.model_dial == 1 and '_dial' or '') .. '_' .. string.upper(string.format("%x", opt.seed)))
+        else
+            exp.save_path = exp.save_path or paths.concat('results', opt.game .. '_' .. opt.game_nagents ..
+                    (opt.model_dial == 1 and '_dial' or '') .. '_' .. opt.filename .. '_' .. string.upper(string.format("%x", opt.seed)))
+        end
+        os.execute('mkdir -p ' .. exp.save_path)
+
+        --Save the case's info to the corresponding folder
+        if stats.case == 1 then
+            stats.history1 = stats.history1 or { {'episode', 'd_error', 'actions', 'lever_pos', 'agent_pos', 'q-vals', 'comm_grad1', 'comm_grad2'} }
+            table.insert(stats.history1, {
+                stats.e,
+                stats.d_error,
+                stats.action,
+                stats.states[1],
+                stats.states[2],
+                stats.q_vals,
+                stats.comm_gradient[1][1],
+                stats.comm_gradient[1][2]
+            })
+            
+            csvigo.save({
+                path = paths.concat(exp.save_path, 'case1.csv'),
+                data = stats.history1,
+                verbose = false
+            })
+        elseif stats.case == 2 then
+            stats.history2 = stats.history2 or { {'episode', 'd_error', 'action', 'lever_pos', 'agent_pos', 'q-vals', 'comm_grad1', 'comm_grad2'} }
+            table.insert(stats.history2, {
+                stats.e,
+                stats.d_error,
+                stats.action,
+                stats.states[1],
+                stats.states[2],
+                stats.q_vals,
+                stats.comm_gradient[1][1],
+                stats.comm_gradient[1][2]
+            })
+
+            csvigo.save({
+                path = paths.concat(exp.save_path, 'case2.csv'),
+                data = stats.history2,
+                verbose = false
+            })
+        elseif stats.case == 3 then
+            stats.history3 = stats.history3 or { {'episode', 'd_error', 'action', 'lever_pos', 'agent_pos', 'q-vals', 'comm_grad1', 'comm_grad2'} }
+            table.insert(stats.history3, {
+                stats.e,
+                stats.d_error,
+                stats.action,
+                stats.states[1],
+                stats.states[2],
+                stats.q_vals,
+                stats.comm_gradient[1][1],
+                stats.comm_gradient[1][2]
+            })
+
+            csvigo.save({
+                path = paths.concat(exp.save_path, 'case3.csv'),
+                data = stats.history3,
+                verbose = false
+            })
+        elseif stats.case == 4 then
+            stats.history4 = stats.history4 or { {'episode', 'd_error', 'action', 'lever_pos', 'agent_pos', 'q-vals', 'comm_grad1', 'comm_grad2'} }
+            table.insert(stats.history4, {
+                stats.e,
+                stats.d_error,
+                stats.action,
+                stats.states[1],
+                stats.states[2],
+                stats.q_vals,
+                stats.comm_gradient[1][1],
+                stats.comm_gradient[1][2]
+            })
+
+            csvigo.save({
+                path = paths.concat(exp.save_path, 'case4.csv'),
+                data = stats.history4,
+                verbose = false
+            })
+        elseif stats.case == 5 then
+            stats.history5 = stats.history5 or { {'episode', 'd_error', 'action', 'lever_pos', 'agent_pos', 'q-vals', 'comm_grad1', 'comm_grad2'} }
+            table.insert(stats.history5, {
+                stats.e,
+                stats.d_error,
+                stats.action,
+                stats.states[1],
+                stats.states[2],
+                stats.q_vals,
+                stats.comm_gradient[1][1],
+                stats.comm_gradient[1][2]
+            })
+
+            csvigo.save({
+                path = paths.concat(exp.save_path, 'case5.csv'),
+                data = stats.history5,
+                verbose = false
+            })
+        end
     end
 
     function exp.load()
