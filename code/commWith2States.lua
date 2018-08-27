@@ -773,6 +773,8 @@ for e = 1, opt.nepisodes do
             if opt.model_dial == 1 then
                 local comm_limited = game:getCommLimited(step, i)
                 local comm_grad = grad[5]
+print(comm_grad)
+
 
                 if comm_limited then
                     for b = 1, opt.bs do
@@ -780,6 +782,7 @@ for e = 1, opt.nepisodes do
                         if comm_limited[b] ~= 0 then
                             episode[step].d_comm[{ { b }, unpack(comm_limited[b]) }]:add(comm_grad[b])
                         end
+print(comm_limited[b])
                     end
                 else
                     -- zero out own communication unless it's part of the switch riddle

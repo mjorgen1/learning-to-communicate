@@ -96,7 +96,7 @@ function SimplePlan:getActionRange(step, agent)
                 range[b] = { { b }, { 1, bound } }
             elseif self.step_counter == 1 then
                 range[b] = { { b }, { 1 , 1} }
-	        else
+	    else
                 range[b] = { { b }, { 1 , bound -1} }
             end
         end
@@ -161,11 +161,9 @@ function SimplePlan:getReward(a_t,episode)
 	        if self.terminal[b]==0 and (a_t[b][1] == 3 and a_t[b][2] == 3) then -- both did pull
                 self.reward[b] = self.reward_all_live
 		        self.terminal[b] = 1
-		        --print('both pulled')
 	        elseif self.terminal[b]==0 and (a_t[b][1] == 3 or a_t[b][2] == 3) then
 		        --self.reward[b] = self.reward_all_die
 		        self.terminal[b] = 1
-		        --print('one pulled')
 	        end
 
 	    elseif self.reward_option == 'optimisable' then
@@ -229,12 +227,12 @@ function SimplePlan:getReward(a_t,episode)
 
 	        --reward for the single agent giving a hint on the right path
 	        if self.terminal[b]==0 and self.agent_pos[b][1] == 1 and self.agent_pos[b][2] == 1 then
-		        if a_t[b][1] == 2 then
-		            self.reward[b][1] = self.reward[b][1] -1 * self.pot_weight
-			end
-			if a_t[b][2] == 2 then
-		            self.reward[b][2] = self.reward[b][2] -1 * self.pot_weight
-		        end
+		        --if a_t[b][1] == 2 then
+		          --  self.reward[b][1] = self.reward[b][1] -1 * self.pot_weight
+			--end
+			--if a_t[b][2] == 2 then
+		          --  self.reward[b][2] = self.reward[b][2] -1 * self.pot_weight
+		        --end
 	        elseif self.terminal[b]==0 then
 
 		        if self.agent_pos[b][1] < self.lever_pos[b][1] then
@@ -296,9 +294,9 @@ function SimplePlan:getReward(a_t,episode)
 
 	        --cooperative reward for successfully pulling the lever
 	        if self.terminal[b]==0 and (a_t[b][1] == 3 and a_t[b][2] == 3) then
-		        earliest = torch.max(self.lever_pos[b])
-		        if (self.step_counter > earliest) then
-                    self.reward[b] = self.reward_all_live * 1/(self.step_counter-earliest)
+		        earliest = torch.max(self.lever_pos[b])+1
+		        if (self.step_counter == earliest) then
+                    self.reward[b] = self.reward_all_live
 		        end
 		        self.terminal[b] = 1
 	        elseif self.terminal[b]==0 and (a_t[b][1] == 3 or a_t[b][2] == 3) then
