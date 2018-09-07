@@ -262,17 +262,19 @@ local function run_episode(opt, game, model, agent, e, test_mode)
         if opt.model_dial == 0 then
             episode[step].a_comm_t = torch.zeros(opt.bs, opt.game_nagents):type(opt.dtype)
         end
-  
+ 
+
+
+ 
         -- Iterate agents
         for i = 1, opt.game_nagents do
-            
+
             agent[i].input[step] = {
                 episode[step].s_t[i][{{},{1}}]:squeeze():type(opt.dtype),
                 episode[step].s_t[i][{{},{2}}]:squeeze():type(opt.dtype),
                 agent[i].id,
                 agent[i].state[step - 1]
             }
-
 
             -- Communication enabled
             if opt.game_comm_bits > 0 and opt.game_nagents > 1 then
@@ -291,13 +293,13 @@ local function run_episode(opt, game, model, agent, e, test_mode)
                     end
                     table.insert(agent[i].input[step], comm_lim)
 
-		    if test_mode then
+		    --if test_mode then
                 	--[[print("\n")
-                	print("The comm sent to agent".. i)
+                	--]]print("The comm sent to agent".. i)
                     print(comm_lim[1])
                     print(comm_lim[2])--]]
 
-		    end
+		    --end
                 else
                     -- zero out own communication if not action aware
                     comm[{ {}, { i } }]:zero()
@@ -342,7 +344,6 @@ local function run_episode(opt, game, model, agent, e, test_mode)
             -- Compute Q values
             local comm, state, q_t
             agent[i].state[step], q_t = unpack(model.agent[model.id(step, i)]:forward(agent[i].input[step]))
-
 
             -- If dial split out the comm values from q values
             if opt.model_dial == 1 then
@@ -709,7 +710,7 @@ for e = 1, opt.nepisodes do
     -- Backward pass
     local step_back = 1
     for step = episode.nsteps, 1, -1 do --iterates backwards through the steps
-
+print(step)
         stats.td_err[(e - 1) % opt.step + 1] = 0
         stats.td_comm[(e - 1) % opt.step + 1] = 0
 
@@ -730,8 +731,10 @@ for e = 1, opt.nepisodes do
                     -- if first backward init RNN
                     for j = 1, opt.model_rnn_states do
                         agent[i].d_state[step_back - 1][j][b]:zero()
+print('zeroed')
                     end
                 end
+
                 
                 if step <= episode.steps[1] then
 
@@ -739,6 +742,7 @@ for e = 1, opt.nepisodes do
                     if episode[step].a_t[1][i] > 0 then
                         if episode[step].terminal[1] == 1 then
                             td_err[b] = episode[step].r_t[1][i] - q_t[1][episode[step].a_t[1][i]]
+			    stats.q_err = td_err[1]
                         else
                             local q_next_max
                             if opt.model_avg_q == 1 and opt.model_dial == 0 and episode[step].a_comm_t[1][i] > 0 then
@@ -778,12 +782,12 @@ for e = 1, opt.nepisodes do
                                     stats.case = 2--case 2, agent waited too long
                                 end
                             end
-                            --[[checking that the cases work correctly
-                            print("step: " .. step)
-                            print("earliest: " .. earliest)
-                            print("actions for agent 1 then 2: " .. episode[step].a_t[1][i] .. " " .. episode[step].a_t[1][2] )
-                            print("case: ")
-                            print(stats.case .. "\n")--]]
+                            --checking that the cases work correctly
+                            --print("step: " .. step)
+                            --print("earliest: " .. earliest)
+                            --print("actions for agent 1 then 2: " .. episode[step].a_t[1][i] .. " " .. episode[step].a_t[1][2] )
+                            --print("\n".."case: " ..stats.case)
+			    --print(episode[step].r_t[1][i])
                         end
                     else
                         error('Error!')
@@ -812,10 +816,10 @@ for e = 1, opt.nepisodes do
                         -- Derivatives with respect to agent_i's message are stored in d_comm[b][i]
                         local bound = opt.game_action_space
                         d_err[{ { b }, { bound + 1, opt.game_action_space_total } }]:add(episode[step + 1].d_comm[1][i])
+			--print(episode[step + 1].d_comm[1][i])
                     end
                 end
             end
-
 
             -- Track td-err
             stats.td_err[(e - 1) % opt.step + 1] = stats.td_err[(e - 1) % opt.step + 1] + 0.5 * td_err:clone():pow(2):mean()
@@ -829,19 +833,40 @@ for e = 1, opt.nepisodes do
                 stats.td_comm[(e - 1) % opt.step + 1] = stats.td_comm[(e - 1) % opt.step + 1] + 0.5 * d_err[{ {}, { bound + 1, opt.game_action_space_total } }]:clone():pow(2):mean()
             end
 
+
+--print(agent[i].input[step][5])
+--print(agent[i].input[step][4][1])
+print(agent[i].d_state[step_back - 1][1])
+
+
+print('next')
+
             -- Backward pass
             local grad = model.agent[model.id(step, i)]:backward(agent[i].input[step], {
                 agent[i].d_state[step_back - 1],
                 d_err
             })
+print(grad[1])
+print(grad[2])
+print(grad[3])
+print(grad[4][1])
+print(grad[4][2])
+print(grad[4][3])
+print(grad[4][4])
+print(grad[5])
+print(grad[6])
 
             --'state' is the 3rd input, so we can extract d_state
             agent[i].d_state[step_back] = grad[4]
+--print(agent[i].d_state[step_back][1])
+
+--print(d_err)
 
             --For dial we need to write add the derivatives w/ respect to the incoming messages to the d_comm tracker
             if opt.model_dial == 1 then
                 local comm_limited = game:getCommLimited(step, i)
                 local comm_grad = grad[5]
+--print(comm_grad)
 
                 if comm_limited then
                     for b = 1, opt.bs do  --changed for the sake of copying everything from batch 1 to b2
@@ -867,6 +892,8 @@ for e = 1, opt.nepisodes do
         -- Count backward steps
         step_back = step_back + 1
     end
+    print(stats.case ..'\t'.. stats.q_err ..'\t'.. episode[2].d_comm[1][2][1] ..'\t'.. episode[2].d_comm[1][2][2])
+    --print(episode[2].d_comm[1][2][1])
 
     -- Update gradients
     local feval = function(x)

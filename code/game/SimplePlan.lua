@@ -36,16 +36,17 @@ function SimplePlan:__init(opt)
     self.reward_all_die = -1 + self.opt.game_reward_shift
     self.reward_small_off = -0.2
 
-    self.reward_option =  'potential'--'optimisable' -- 'time-changing' 'easy'
+    self.reward_option =  'easy'--'potential'--'optimisable' -- 'time-changing' 
 
     -- Spawn new game
     self:reset(1)
 end
 
-function SimplePlan:reset(episode)
+function SimplePlan:reset(gradient_check)
 
+    gradient_check = gradient_check or 0
     --save episode
-    self.episode = episode
+    --self.episode = episode
 
     -- Reset rewards
     self.reward = torch.zeros(self.opt.bs, self.opt.game_nagents)
@@ -75,12 +76,15 @@ function SimplePlan:reset(episode)
 
     for b = 1, self.opt.bs do
 	for agent = 1, self.opt.game_nagents do
-	    index = torch.random(1,4) 
-	    self.lever_pos[{ { b }, { agent } }] = lever_pos_distribution[index]
+            index = torch.random(1,4) 
+            if gradient_check ~= 1 or (b == 1) then
+                self.lever_pos[{ { b }, { agent } }] = lever_pos_distribution[index]
+            elseif (b > 1) and gradient_check == 1 then
+                self.lever_pos[{ { b }, { agent } }] = self.lever_pos[{ { 1 }, { agent } }] 
+            end
         end
-
+    
     end
-
     self.pot_weight = self.opt.gamma
 
     return self
@@ -144,10 +148,34 @@ function SimplePlan:getCommLimited(step, i)
 	    end
         end
         return range
-    else                                   --no commLimited
+    elseif 
+	self.opt.game_comm_limited == 0 then --commLimited
+
+        local range = {}
+
+        -- Get range per batch
+        for b = 1, self.opt.bs do
+            if step > 1 and i == 1 then
+                range[b] = { 2, {} }
+            elseif step > 1 and i == 2 then
+                range[b] = { 1, {} }
+	    else
+                 range[b] = 0
+
+            end
+
+        end
+        return range  
+    else                                --no commLimited
         return nil
     end
     --3 comm actions for a_t 
+end
+
+
+function SimplePlan:getEarliest()
+    local earliest = torch.max(self.lever_pos[1])+1
+    return earliest
 end
 
 function SimplePlan:getReward(a_t,episode)
@@ -157,29 +185,33 @@ function SimplePlan:getReward(a_t,episode)
     for b = 1, self.opt.bs do
  
         if self.reward_option == 'easy' then
-
-	        if self.terminal[b]==0 and (a_t[b][1] == 3 and a_t[b][2] == 3) then -- both did pull
+	    local earliest = torch.max(self.lever_pos[b])+1
+	    if self.terminal[b]==0 and (a_t[b][1] == 3 and a_t[b][2] == 3) then -- both did pull
                 self.reward[b] = self.reward_all_live
-		        self.terminal[b] = 1
-	        elseif self.terminal[b]==0 and (a_t[b][1] == 3 or a_t[b][2] == 3) then
-		        --self.reward[b] = self.reward_all_die
-		        self.terminal[b] = 1
-	        end
+		self.terminal[b] = 1
+	    elseif self.terminal[b]==0 and (a_t[b][1] == 3 or a_t[b][2] == 3) then
+	        --self.reward[b] = self.reward_all_die
+	        self.terminal[b] = 1
+            end
 
-	    elseif self.reward_option == 'optimisable' then
+    	    if self.step_counter == earliest then
+                self.terminal[b] = 1
+            end
 
-	        if self.terminal[b]==0 and (a_t[b][1] == 3 and a_t[b][2] == 3) then -- both did pull
-		        earliest = torch.max(self.lever_pos[b])
-		        if (self.step_counter > earliest) then  --both pulled but not at the first instance they could have
+	elseif self.reward_option == 'optimisable' then
+
+	    if self.terminal[b]==0 and (a_t[b][1] == 3 and a_t[b][2] == 3) then -- both did pull
+	        earliest = torch.max(self.lever_pos[b])
+	        if (self.step_counter > earliest) then  --both pulled but not at the first instance they could have
                     self.reward[b] = self.reward_all_live * 1/(self.step_counter-earliest)
-		        end
-		        self.terminal[b] = 1
+		end
+		self.terminal[b] = 1
 		        --print('both pulled')
-	        elseif self.terminal[b]==0 and (a_t[b][1] == 3 or a_t[b][2] == 3) then
+	    elseif self.terminal[b]==0 and (a_t[b][1] == 3 or a_t[b][2] == 3) then
 		        --self.reward[b] = self.reward_all_die
-		        self.terminal[b] = 1
+		self.terminal[b] = 1
 		        --print('one pulled')
-	        end
+	    end
 
         elseif self.reward_option == 'time-changing' then
     	    --reward for staying in communication distance at the beginning of the episode, reduces over steps and episodes

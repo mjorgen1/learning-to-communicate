@@ -290,9 +290,9 @@ local function run_episode(opt, game, model, agent, e, test_mode)
                     table.insert(agent[i].input[step], comm_lim)
 
 		    if test_mode then
-                	print("\n")
+                	--[[print("\n")
                 	print("The comm sent to agent".. i)
-	                print(comm_lim[1])
+	                print(comm_lim[1])--]]
 
 		    end
                 else
@@ -347,8 +347,8 @@ local function run_episode(opt, game, model, agent, e, test_mode)
 
             --Print the communication for each agent
             if test_mode then
-                print("Agent " .. i .. "'s Current state: " .. episode[step].s_t[i][1][1] .. ' ' .. episode[step].s_t[i][1][2] )
-                print(q_t[1]:view(1,-1))
+                --print("Agent " .. i .. "'s Current state: " .. episode[step].s_t[i][1][1] .. ' ' .. episode[step].s_t[i][1][2] )
+                --print(q_t[1]:view(1,-1))
             end
 
             -- Pick an action (epsilon-greedy)
@@ -405,8 +405,8 @@ local function run_episode(opt, game, model, agent, e, test_mode)
                 episode[step].a_comm_t[{ {}, { i } }] = max_a_comm:type(opt.dtype)
             end
             if test_mode then --prints out the actions for the test mode
-                print("The action for agent " .. i .. " is ")
-                print(episode[step].a_t[1][i])
+                --print("The action for agent " .. i .. " is ")
+                --print(episode[step].a_t[1][i])
 		--print("Communication of agent " .. i .. " is ")
 		--print(episode[step].a_comm_t[1][i])
             end
@@ -494,9 +494,9 @@ local function run_episode(opt, game, model, agent, e, test_mode)
         episode[step].r_t, episode[step].terminal = game:step(episode[step].a_t,e)
 	
 	if test_mode then
-	    print('reward achieved: ')
+	   --[[ print('reward achieved: ')
 	    print(episode[step].r_t[1])
-	    print('terminated: '.. episode[step].terminal[1])
+	    print('terminated: '.. episode[step].terminal[1])--]]
 	end
 
         -- Accumulate steps (not for +1 step)
@@ -773,7 +773,6 @@ for e = 1, opt.nepisodes do
             if opt.model_dial == 1 then
                 local comm_limited = game:getCommLimited(step, i)
                 local comm_grad = grad[5]
-print(comm_grad)
 
 
                 if comm_limited then
@@ -782,7 +781,6 @@ print(comm_grad)
                         if comm_limited[b] ~= 0 then
                             episode[step].d_comm[{ { b }, unpack(comm_limited[b]) }]:add(comm_grad[b])
                         end
-print(comm_limited[b])
                     end
                 else
                     -- zero out own communication unless it's part of the switch riddle

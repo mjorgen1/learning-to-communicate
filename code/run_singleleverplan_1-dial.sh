@@ -7,17 +7,19 @@ th commWith2States.lua \
 -game_comm_bits 0 \
 -game_comm_sigma 1 \
 -nsteps 10 \
--gamma 1 \
+-gamma 0.3 \
 -model_dial 0 \
 -model_bn 1 \
 -model_know_share 1 \
 -model_action_aware 1 \
--model_rnn_size 128 \
+-model_rnn_size 64 \
+-model_rnn_layers 1 \
 -model_rnn 'lstm' \
 -bs 32 \
--learningrate 0.0005 \
+-learningrate 0.00005 \
 -nepisodes 31250 \
 -step 100 \
 -step_test 10 \
 -step_target 100 \
+-model_dropout 0.9 \
 -cuda 1

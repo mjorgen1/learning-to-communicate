@@ -205,11 +205,11 @@ function SingleLeverPlan:getState()
         state[agent] = torch.Tensor(self.opt.bs,2)
 
         for b = 1, self.opt.bs do
-	    --if (self.agent_pos[b][agent] == 1) then
+	    if (self.agent_pos[b][agent] == 1) then
 		state[agent][{{b}, {1}}]= self.lever_pos[b][agent]
-	    --else
-		--state[agent][{{b}, {1}}]= 1	
-	    --end
+	    else
+		state[agent][{{b}, {1}}]= 1	
+	    end
 	    state[agent][{{b},{2}}]= self.agent_pos[b][agent]
 	    --print(agent ..' position: ' .. self.agent_pos[b][agent])
         end

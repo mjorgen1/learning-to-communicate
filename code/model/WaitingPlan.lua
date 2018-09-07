@@ -122,7 +122,7 @@ return function(opt)
                     (opt.model_dial == 1 and '_dial' or '') .. '_' .. opt.filename .. '_' .. string.upper(string.format("%x", opt.seed)))
         end
         os.execute('mkdir -p ' .. exp.save_path)
-
+--[[
         --Save the case's info to the corresponding folder
         if stats.case == 1 then
             stats.history1 = stats.history1 or { {'episode', 'd_error', 'actions', 'lever_pos', 'agent_pos', 'q-vals', 'comm_grad1', 'comm_grad2'} }
@@ -214,7 +214,7 @@ return function(opt)
                 data = stats.history5,
                 verbose = false
             })
-        end
+        end--]]
     end
 
     function exp.load()

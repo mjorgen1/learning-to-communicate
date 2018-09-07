@@ -36,16 +36,16 @@ function WaitingPlan:__init(opt)
     self.reward_all_die = -1 + self.opt.game_reward_shift
     self.reward_small_off = -0.2
 
-    self.reward_option =  'optimisable' -- 'time-changing'  'easy'
+    self.reward_option =   'easy'--'optimisable' -- 'time-changing' 
 
     -- Spawn new game
     self:reset(1)
 end
 
-function WaitingPlan:reset(episode)
+function WaitingPlan:reset(gradient_check)
 
     --save episode
-    self.episode = episode
+    --self.episode = episode
 
     -- Reset rewards
     self.reward = torch.zeros(self.opt.bs, self.opt.game_nagents)
@@ -74,14 +74,12 @@ function WaitingPlan:reset(episode)
     lever_pos_distribution = {2,2,3,4}
 
     for b = 1, self.opt.bs do
-	    for agent = 1, self.opt.game_nagents do
+	for agent = 1, self.opt.game_nagents do
             index = torch.random(1,4) 
-            if(b == 1) then
+            if gradient_check ~= 1 or (b == 1) then
                 self.lever_pos[{ { b }, { agent } }] = lever_pos_distribution[index]
-            elseif (b == 2) then
+            elseif (b > 1) and gradient_check == 1 then
                 self.lever_pos[{ { b }, { agent } }] = self.lever_pos[{ { 1 }, { agent } }] 
-            else
-                error("can only use waiting plan with 2 batches")
             end
         end
     
@@ -158,7 +156,7 @@ function WaitingPlan:getCommLimited(step, i)
 end
 
 function WaitingPlan:getEarliest()
-    local earliest = torch.max(self.lever_pos[1])-1
+    local earliest = torch.max(self.lever_pos[1])
     return earliest
 end
 
@@ -170,32 +168,35 @@ function WaitingPlan:getReward(a_t,episode)
  
         if self.reward_option == 'easy' then
 
-	    if self.terminal[b]==0 and (a_t[b][1] == 4 and a_t[b][2] == 4) then -- both did pull
-                self.reward[b] = self.reward_all_live
-		self.terminal[b] = 1
-		--print('both pulled')
-	    elseif self.terminal[b]==0 and (a_t[b][1] == 4 or a_t[b][2] == 4) then
-		--self.reward[b] = self.reward_all_die
-		self.terminal[b] = 1
-		--print('one pulled')
-	    end
-
-	elseif self.reward_option == 'optimisable' then
-        if(self.agent_pos[b][1] == self.lever_pos[b][1] and self.agent_pos[b][2] == self.lever_pos[b][2]) then
-            self.terminal[b] = 1
-        end
-        if self.terminal[b]==0 and (a_t[b][1] == 2 and a_t[b][2] == 2) then -- both did pull
-            earliest = torch.max(self.lever_pos[1])-1
-            self.reward[b] = self.reward_all_live * 1/(self.step_counter-earliest)
-		    self.terminal[b] = 1
+            if self.terminal[b]==0 and (a_t[b][1] == 2 and a_t[b][2] == 2) then -- both did pull
+            	self.reward[b] = self.reward_all_live
+	 	self.terminal[b] = 1
 		--print('both pulled')
 	    elseif self.terminal[b]==0 and (a_t[b][1] == 2 or a_t[b][2] == 2) then
-		--self.reward[b] = self.reward_all_die
-		    self.terminal[b] = 1
+		self.terminal[b] = 1
 		--print('one pulled')
 	    end
 
+            if(self.agent_pos[b][1] == self.lever_pos[b][1] and self.agent_pos[b][2] == self.lever_pos[b][2]) then
+                self.terminal[b] = 1
+            end
 
+	elseif self.reward_option == 'optimisable' then
+
+            if self.terminal[b]==0 and (a_t[b][1] == 2 and a_t[b][2] == 2) then -- both did pull
+		earliest = torch.max(self.lever_pos[1])-1
+            	self.reward[b] = self.reward_all_live * 1/(self.step_counter-earliest)
+	 	self.terminal[b] = 1
+		--print('both pulled')
+	    elseif self.terminal[b]==0 and (a_t[b][1] == 2 or a_t[b][2] == 2) then
+		self.terminal[b] = 1
+		--print('one pulled')
+	    end
+
+            if(self.agent_pos[b][1] == self.lever_pos[b][1] and self.agent_pos[b][2] == self.lever_pos[b][2]) then
+                self.terminal[b] = 1
+            end
+	
         elseif self.reward_option == 'time-changing' then
     	    --reward for staying in communication distance at the beginning of the episode, reduces over steps and episodes
 	   --[[ if self.terminal[b] == 0 and self.agent_pos[b]:sum(1)[1] == 2 and self.step_counter > 1 then

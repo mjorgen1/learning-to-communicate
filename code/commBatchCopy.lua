@@ -81,6 +81,8 @@ cmd:option('-game_comm_limited', 1, '')
 cmd:option('-game_comm_bits', 2, '')
 cmd:option('-game_comm_sigma', 0, '')
 cmd:option('-nsteps', 6, 'number of steps')
+-- SimplePlan
+cmd:option('-imitation_Learning', 0, 'imitation learning')
 
 cmd:text()
 
@@ -119,9 +121,9 @@ else
     opt.dtype = 'torch.FloatTensor'
 end
 
-if opt.model_comm_narrow == 0 and opt.game_comm_bits > 0 then
-    opt.game_comm_bits = 2 ^ opt.game_comm_bits
-end
+--if opt.model_comm_narrow == 0 and opt.game_comm_bits > 0 then
+--    opt.game_comm_bits = 2 ^ opt.game_comm_bits
+--end
 
 -- Initialise game
 local game = (require('game.' .. opt.game))(opt)
@@ -199,13 +201,22 @@ local stats = {
 local replay = {}
 
 -- Run episode
-local function run_episode(opt, game, model, agent, e, test_mode)
+local function run_episode(opt, game, model, agent, e, test_mode, gradient_check)
 
     -- Test mode
     test_mode = test_mode or false
 
     -- Reset game
-    game:reset()
+    game:reset(gradient_check)
+    local im_learning = false
+    -- allow imitation learning every even numbered episodes
+    if(opt.imitation_Learning == 1) then
+        if(e % 2 == 0  ) then
+            im_learning = true
+        else
+            im_learning = false
+        end
+    end
 
     -- Initialise episode
     local step = 1
@@ -221,6 +232,7 @@ local function run_episode(opt, game, model, agent, e, test_mode)
         s_t = game:getState(),
         terminal = torch.zeros(opt.bs)
     }
+
     if opt.game_comm_bits > 0 and opt.game_nagents > 1 then
         episode[step].comm = torch.zeros(opt.bs, opt.game_nagents, opt.game_comm_bits):type(opt.dtype)
         if opt.model_dial == 1 and opt.model_target == 1 then
@@ -255,7 +267,8 @@ local function run_episode(opt, game, model, agent, e, test_mode)
         -- Iterate agents
         for i = 1, opt.game_nagents do
             agent[i].input[step] = {
-                episode[step].s_t[i][{{}}]:squeeze():type(opt.dtype),
+                episode[step].s_t[i][{{},{1}}]:squeeze():type(opt.dtype),
+                episode[step].s_t[i][{{},{2}}]:squeeze():type(opt.dtype),
                 agent[i].id,
                 agent[i].state[step - 1]
             }
@@ -275,7 +288,6 @@ local function run_episode(opt, game, model, agent, e, test_mode)
                             comm_lim[{ { b } }] = comm[{ { b }, unpack(comm_limited[b]) }]
                         end
                     end
-
                     table.insert(agent[i].input[step], comm_lim)
 
 		    if test_mode then
@@ -328,17 +340,16 @@ local function run_episode(opt, game, model, agent, e, test_mode)
             local comm, state, q_t
             agent[i].state[step], q_t = unpack(model.agent[model.id(step, i)]:forward(agent[i].input[step]))
 
+
             -- If dial split out the comm values from q values
             if opt.model_dial == 1 then
-                q_t, comm = DRU(q_t, test_mode)
+                q_t, comm = DRU(q_t, test_mode, gradient_check)
             end
 
             --Print the communication for each agent
             if test_mode then
-               -- print("Agent " .. i .. "'s Current state: " .. episode[step].s_t[i][1]:squeeze())
-            --elseif not test_mode then
-            --    print("Test_mode is " .. (test_mode and 'true' or 'false') .. " and this is the comm for agent".. i)
-            --    print(comm[1]) 
+                --print("Agent " .. i .. "'s Current state: " .. episode[step].s_t[i][1][1] .. ' ' .. episode[step].s_t[i][1][2] )
+                --print(q_t[1]:view(1,-1))
             end
 
             -- Pick an action (epsilon-greedy)
@@ -390,18 +401,21 @@ local function run_episode(opt, game, model, agent, e, test_mode)
 
             -- Store actions
             episode[step].a_t[{ {}, { i } }] = max_a:type(opt.dtype)
-            if test_mode then --prints out the actions for the test mode
-                --print("The action for agent " .. i .. " is ")
-                --print(episode[step].a_t[1][i])
-            end
+
             if opt.model_dial == 0 and opt.game_comm_bits > 0 then
                 episode[step].a_comm_t[{ {}, { i } }] = max_a_comm:type(opt.dtype)
+            end
+            if test_mode then --prints out the actions for the test mode
+                --print("The action for agent " .. i .. " is ")
+               -- print(episode[step].a_t[1][i])
+		--print("Communication of agent " .. i .. " is ")
+		--print(episode[step].a_comm_t[1][i])
             end
 
             for b = 1, opt.bs do
 
                 -- Epsilon-greedy action picking
-                if not test_mode then
+                if not test_mode and not im_learning then
                     if opt.model_dial == 0 then
                         -- Random action
                         if torch.uniform() < opt.eps then
@@ -445,6 +459,18 @@ local function run_episode(opt, game, model, agent, e, test_mode)
                         end
                     end
                 end
+                if not test_mode and im_learning then
+                    --print(actions)
+                    local comm_actions, actions = game:imitateAction()
+                    if(opt.model_dial == 0) then
+                        episode[step].a_comm_t[b][i] = comm_actions[b][i]
+                    end
+                    episode[step].a_t[b][i] = actions[b][i]
+                end
+		
+		if gradient_check == 1 then
+		    episode[step].a_t[b][i] = episode[step].a_t[1][i]
+		end
 
                 -- If communication action populate channel
                 if step <= opt.nsteps then
@@ -471,11 +497,12 @@ local function run_episode(opt, game, model, agent, e, test_mode)
 
         -- Compute reward for current state-action pair
         episode[step].r_t, episode[step].terminal = game:step(episode[step].a_t,e)
+
 	
 	if test_mode then
-	    --print('reward achieved: ')
-	    --print(episode[step].r_t[1])
-	    --print('terminated: '.. episode[step].terminal[1])
+	    --[[print('reward achieved: ')
+	    print(episode[step].r_t[1])
+	    print('terminated: '.. episode[step].terminal[1])--]]
 	end
 
         -- Accumulate steps (not for +1 step)
@@ -499,7 +526,7 @@ local function run_episode(opt, game, model, agent, e, test_mode)
         -- Target Network, for look-ahead
         if opt.model_target == 1 and not test_mode then
             for i = 1, opt.game_nagents do
-                local comm = agent[i].input[step][4]
+                local comm = agent[i].input[step][5]
 
                 if opt.game_comm_bits > 0 and opt.game_nagents > 1 and opt.model_dial == 1 then
                     local comm_limited = game:getCommLimited(step, i)
@@ -525,16 +552,17 @@ local function run_episode(opt, game, model, agent, e, test_mode)
                 agent[i].input_target[step] = {
                     agent[i].input[step][1],
                     agent[i].input[step][2],
+                    agent[i].input[step][3],
                     agent[i].state_target[step - 1],
                     comm,
-                    agent[i].input[step][5],
+                    agent[i].input[step][6],
                 }
 
                 -- Forward target
                 local state, q_t_target = unpack(model.agent_target[model.id(step, i)]:forward(agent[i].input_target[step]))
                 agent[i].state_target[step] = state
                 if opt.model_dial == 1 then
-                    q_t_target, comm = DRU(q_t_target, test_mode)
+                    q_t_target, comm = DRU(q_t_target, test_mode, gradient_check)
                 end
 
                 -- Limit actions
@@ -593,13 +621,12 @@ local function run_episode(opt, game, model, agent, e, test_mode)
     -- Update stats
     episode.nsteps = episode.steps:max()
     episode.comm_per:cdiv(episode.steps)
-
     return episode, agent
 end
 
 
 -- split out the communication bits and add noise.
-function DRU(q_t, test_mode)
+function DRU(q_t, test_mode, gradient_check)
     if opt.model_dial == 0 then error('Warning!! Should only be used in DIAL') end
     local bound = opt.game_action_space
 
@@ -617,18 +644,34 @@ function DRU(q_t, test_mode)
             comm = comm:gt(0.5):type(opt.dtype):add(-0.5):mul(2 * 20)
         end
     end
+
     if opt.game_comm_sigma > 0 and not test_mode then
-        local noise_vect = torch.randn(comm:size()):type(opt.dtype):mul(opt.game_comm_sigma)
-        comm = comm + noise_vect
+	if gradient_check == 1 then
+            --local noise_vect = torch.randn(comm:size(2)):type(opt.dtype):mul(opt.game_comm_sigma)
+	    --for b = 1, opt.bs do
+                --comm[b] = comm[b] + noise_vect
+	    --end
+	else
+	    local noise_vect = torch.randn(comm:size()):type(opt.dtype):mul(opt.game_comm_sigma)
+	    comm = comm + noise_vect
+	end
+
     end
     return q_t_n, comm
 end
+
+gradient_check = 0
 
 -- Start time
 local beginning_time = torch.tic()
 
 -- Iterate episodes
 for e = 1, opt.nepisodes do
+
+
+    if e > 500  then
+	gradient_check = 1
+    end
 
     stats.e = e
 
@@ -642,7 +685,7 @@ for e = 1, opt.nepisodes do
     --print("Current epoch: " .. e)
 
     -- Run episode
-    episode, agent = run_episode(opt, game, model, agent, e)
+    episode, agent = run_episode(opt, game, model, agent, e, false, gradient_check)
 
     -- Rewards stats
     stats.train_r[(e - 1) % opt.step + 1] = episode.r:mean(1)
@@ -654,7 +697,7 @@ for e = 1, opt.nepisodes do
 
     -- Backward pass
     local step_back = 1
-    for step = episode.nsteps, 1, -1 do
+    for step = episode.nsteps, 1, -1 do --iterates backwards through the steps
         stats.td_err[(e - 1) % opt.step + 1] = 0
         stats.td_comm[(e - 1) % opt.step + 1] = 0
 
@@ -683,6 +726,7 @@ for e = 1, opt.nepisodes do
                     if episode[step].a_t[b][i] > 0 then
                         if episode[step].terminal[b] == 1 then
                             td_err[b] = episode[step].r_t[b][i] - q_t[b][episode[step].a_t[b][i]]
+			    stats.q_err = td_err[1]
                         else
                             local q_next_max
                             if opt.model_avg_q == 1 and opt.model_dial == 0 and episode[step].a_comm_t[b][i] > 0 then
@@ -694,6 +738,63 @@ for e = 1, opt.nepisodes do
                         end
                         d_err[{ { b }, { episode[step].a_t[b][i] } }] = -td_err[b]
 
+			--preparation for the case tables
+                        if ((step == episode.steps[1]) and gradient_check == 1 and (b == 1) and (i == 1)) then
+                            --set variables to be ready for input into caseTable parameter
+                            stats.states = {episode[step].s_t[i][1][1], episode[step].s_t[i][1][2]}
+                            stats.q_vals = q_t[b][episode[step].a_t[1][i]]
+                            stats.d_error = d_err[1][episode[step].a_t[b][i]]                                                    
+                            stats.action = episode[step].a_t[1][i] 
+
+			    local earliest = game:getEarliest()
+			    if opt.game == 'WaitingPlan' then
+                            	--check the cases and set cases to the correct one
+                             	stats.case = 0
+                            	if (step < earliest) then
+                                    if(episode[step].a_t[1][i] == 2) then
+                                	stats.case = 1--case 1, pulled too early
+                                    elseif(episode[step].a_t[1][2] == 2) then
+                                        stats.case = 5 --case 5, waited and other pulled too early
+                                    end
+                            	elseif (step == earliest) then
+                                    if(episode[step].a_t[1][i] == 2) then
+                                        if(episode[step].a_t[1][2] == 2) then
+                                            stats.case = 3--case 3, both pulled
+                                        elseif (episode[step].a_t[1][2] ~= 2) then
+                                            stats.case = 4--case 4, pulled and other agent failed
+                                        end
+                                    elseif(episode[step].a_t[1][i] == 1) then
+                                         stats.case = 2--case 2, agent waited too long
+                                    end
+                            	end
+			    elseif opt.game == 'SimplePlan' then
+                          	stats.case = 0
+                            	if (step < earliest) then
+                                    if(episode[step].a_t[1][i] == 3) then
+                                	stats.case = 1--case 1, pulled too early
+                                    elseif(episode[step].a_t[1][2] == 3) then
+                                        stats.case = 5 --case 5, waited and other pulled too early
+                                    end
+                            	elseif (step == earliest) then
+                                    if(episode[step].a_t[1][i] == 3) then
+                                        if(episode[step].a_t[1][2] == 3) then
+                                            stats.case = 3--case 3, both pulled
+                                        elseif (episode[step].a_t[1][2] ~= 3) then
+                                            stats.case = 4--case 4, pulled and other agent failed
+                                        end
+                                    elseif(episode[step].a_t[1][i] ~= 3) then
+                                         stats.case = 2--case 2, agent waited too long
+                                    end
+                            	end
+			    end
+
+                            --checking that the cases work correctly
+                            --[[print("step: " .. step)
+                            print("earliest: " .. earliest)
+                            print("actions for agent 1 then 2: " .. episode[step].a_t[1][i] .. " " .. episode[step].a_t[1][2] )
+                            print("\n".."case: " ..stats.case)
+			    print(episode[step].r_t[1][i])--]]
+                        end
                     else
                         error('Error!')
                     end
@@ -725,6 +826,7 @@ for e = 1, opt.nepisodes do
                 end
             end
 
+
             -- Track td-err
             stats.td_err[(e - 1) % opt.step + 1] = stats.td_err[(e - 1) % opt.step + 1] + 0.5 * td_err:clone():pow(2):mean()
             if opt.model_dial == 0 then
@@ -743,13 +845,15 @@ for e = 1, opt.nepisodes do
                 d_err
             })
 
+
+
             --'state' is the 3rd input, so we can extract d_state
-            agent[i].d_state[step_back] = grad[3]
+            agent[i].d_state[step_back] = grad[4]
 
             --For dial we need to write add the derivatives w/ respect to the incoming messages to the d_comm tracker
             if opt.model_dial == 1 then
                 local comm_limited = game:getCommLimited(step, i)
-                local comm_grad = grad[4]
+                local comm_grad = grad[5]
 
                 if comm_limited then
                     for b = 1, opt.bs do
@@ -770,6 +874,10 @@ for e = 1, opt.nepisodes do
         step_back = step_back + 1
     end
 
+    if gradient_check == 1 then
+        print(stats.case ..'\t'.. episode[1].s_t[2][1][1] ..'\t'.. episode[1].s_t[1][1][1] ..'\t'.. stats.q_err ..'\t'.. episode[2].d_comm[1][2][1] ..'\t'.. episode[2].d_comm[1][2][2] ..'\t'.. agent[1].input[2][5][1][1][1] ..'\t'.. agent[1].input[2][5][1][1][2])
+    end
+
     -- Update gradients
     local feval = function(x)
 
@@ -782,7 +890,9 @@ for e = 1, opt.nepisodes do
         return nil, gradParams
     end
 
-    optim_func(feval, params, optim_config, optim_state)
+    if gradient_check ~= 1 then
+        optim_func(feval, params, optim_config, optim_state)
+    end
 
     -- Gradient statistics
     if e % opt.step == 0 then
@@ -801,7 +911,7 @@ for e = 1, opt.nepisodes do
     if e % opt.step_test == 0 then
         local test_idx = (e / opt.step_test - 1) % (opt.step / opt.step_test) + 1
 
-        local episode, _ = run_episode(opt, game, model, agent, e, true)
+        local episode, _ = run_episode(opt, game, model, agent, e, true, gradient_check)
         stats.test_r[test_idx] = episode.r:mean(1)
         stats.steps[test_idx] = episode.steps:mean()
         stats.comm_per[test_idx] = episode.comm_count / (episode.comm_count + episode.non_comm_count)

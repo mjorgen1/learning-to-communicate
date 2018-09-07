@@ -172,23 +172,21 @@ return function(opt)
             stats.test_god = stats.test_god or torch.zeros(opt.step / opt.step_test, opt.game_nagents)
 
             -- Naive strategy
-            --local r_naive = 0
-            --for b = 1, opt.bs do
-            --    local has_been = game.has_been[{ { b }, { 1, opt.nsteps }, {} }]:sum(2):squeeze(2):gt(0):float():sum()
-            --   if has_been == opt.game_nagents then
-            --        r_naive = r_naive + game.reward_all_live
-            --    else
-            --        r_naive = r_naive + game.reward_all_die
-            --    end
-            --end
-            --stats.test_opt[test_idx] = r_naive / opt.bs
+            local r_naive = 0
+            for b = 1, opt.bs do
+                local lever_pos = game.lever_pos[b]
+                if lever_pos[1] == lever_pos[2] then
+                    r_naive = r_naive + game.reward_all_live
+                end
+            end
+            stats.test_opt[test_idx] = r_naive / opt.bs
 
             -- God strategy
             local r_god = 0
             for b = 1, opt.bs do
 		lever_pos = game.lever_pos[b]
 		if lever_pos[1] ~= 1 and lever_pos[2] ~= 1 then 
-                    r_god = r_god + game.reward_all_live + (lever_pos:sum()/2-1) * game.pot_weight
+                    r_god = r_god + game.reward_all_live
 		end
             end
             stats.test_god[test_idx] = r_god / opt.bs

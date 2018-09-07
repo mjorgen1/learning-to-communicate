@@ -13,7 +13,7 @@ th comm.lua \
 -model_know_share 1 \
 -model_action_aware 1 \
 -model_rnn_size 228 \
--model_rnn_layers 1 \
+-model_rnn_layers 2 \
 -model_rnn 'lstm' \
 -bs 32 \
 -learningrate 0.0005 \
