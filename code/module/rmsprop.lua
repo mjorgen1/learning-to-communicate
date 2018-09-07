@@ -39,7 +39,7 @@ function optim.rmsprop(opfunc, x, config, state)
    end
 
    -- (3) initialize mean square values and square gradient storage
-   if not state.m then
+   if (not state.m) or #state.m ~= #dfdx then
       -- This line kills the performance
       -- state.m = torch.Tensor():typeAs(x):resizeAs(dfdx):fill(1)
       state.m = torch.Tensor():typeAs(x):resizeAs(dfdx):zero()

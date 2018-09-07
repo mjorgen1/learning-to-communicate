@@ -8,18 +8,18 @@ th commHierarchy.lua \
 -game_comm_bits 3 \
 -game_comm_sigma 1 \
 -nsteps 4 \
--gamma 0.5 \
+-gamma 0.7 \
 -model_dial 1 \
 -model_bn 1 \
 -model_know_share 1 \
 -model_action_aware 1 \
--model_upper_rnn_size 228 \
--model_upper_rnn_layers 1 \
+-model_upper_rnn_size 512 \
+-model_upper_rnn_layers 2 \
 -model_lower_rnn_size 512 \
 -model_lower_rnn_layers 1 \
 -model_rnn 'lstm' \
 -bs 32 \
--learningrate 0.0005 \
+-learningrate 0.00005 \
 -nepisodes 31250 \
 -step 100 \
 -step_test 10 \
@@ -27,6 +27,6 @@ th commHierarchy.lua \
 -upper_eps 0.05 \
 -lower_eps 0.05 \
 -upper_model_dropout 0.3 \
--lower_model_dropout 0.5 \
+-lower_model_dropout 0.2 \
 -imitation_Learning 1 \
 -cuda 1

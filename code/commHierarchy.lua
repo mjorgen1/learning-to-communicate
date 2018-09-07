@@ -146,20 +146,23 @@ end
 opt.game_lower_action_space_total = opt.game_lower_action_space
 
 -- Initialise models
-local model = (require('model.' .. opt.game))(opt)
+local upperModel = (require('model.' .. 'HierarchyUpperPlan'))(opt)
+local lowerModel = (require('model.' .. 'HierarchyLowerPlan'))(opt)
 
 -- Print options
 util.sprint(opt)
 
 -- Model target evaluate
-model.evaluate(model.lower_agent_target)
+upperModel.evaluate(upperModel.agent_target)
+lowerModel.evaluate(lowerModel.agent_target)
 
 -- Get parameters
-local upper_params, upper_gradParams, lower_params, lower_gradParams, lower_params_target, _ = model.getParameters()
+local upper_params, upper_gradParams, upper_params_target, _ = upperModel.getParameters()
+local lower_params, lower_gradParams, lower_params_target, _ = lowerModel.getParameters()
 
 -- Optimisation function
-local upper_optim_func, upper_optim_config = model.upper_optim()
-local lower_optim_func, lower_optim_config = model.lower_optim()
+local upper_optim_func, upper_optim_config = upperModel.optim()
+local lower_optim_func, lower_optim_config = lowerModel.optim()
 local optim_state = {}
 
 -- Initialise agents
@@ -240,8 +243,8 @@ print('initialised aux vectors')
 
 
 
-local function run_episode(opt, game, model, agent, e, test_mode)
-print('run episode '.. e) 
+local function run_episode(opt, game, upperModel, lowerModel, agent, e, test_mode)
+--print('run episode '.. e) 
     -- Test mode
     test_mode = test_mode or false
 
@@ -250,11 +253,11 @@ print('run episode '.. e)
     local im_learning = false
     --allow imitation learning every even numbered episodes
     if(opt.imitation_Learning == 1) then
-        --if(e % 2 == 0  ) then
+        if(e % 2 == 0  ) then
             im_learning = true
-        --else
-          --  im_learning = false
-        --end
+        else
+            im_learning = false
+        end
     end
 
     -- Initialise episode
@@ -330,16 +333,16 @@ print('run episode '.. e)
                 table.insert(agent[i].upper_input[step], comm_lim)
 
 		if test_mode then
-                    print("\n")
-                    print("The comm sent to agent".. i)
-	            print(comm_lim[1])
+                  --  print("\n")
+                   -- print("The comm sent to agent".. i)
+	           -- print(comm_lim[1])
 
 		end
             end
 
             -- Compute Q values
             local comm, state, q_t
-            agent[i].upper_state[step], q_t = unpack(model.upper_agent[model.id(step, i)]:forward(agent[i].upper_input[step]))
+            agent[i].upper_state[step], q_t = unpack(upperModel.agent[upperModel.id(step, i)]:forward(agent[i].upper_input[step]))
 
 
             -- If dial split out the comm values from q values
@@ -349,8 +352,8 @@ print('run episode '.. e)
 
             --Print the communication for each agent
             if test_mode then
-                print("Agent " .. i .. "'s Current state: "  .. upper_episode[step].s_t[i][1][1])
-                print(q_t[1]:view(1,-1))
+              --  print("Agent " .. i .. "'s Current state: "  .. upper_episode[step].s_t[i][1][1])
+              --  print(q_t[1]:view(1,-1))
             end
 
             -- Pick an action (epsilon-greedy)
@@ -403,8 +406,8 @@ print('run episode '.. e)
             -- Store actions
             upper_episode[step].a_t[{ {}, { i } }] = max_a:type(opt.dtype)
             if test_mode then --prints out the actions for the test mode
-                print("The action for agent " .. i .. " is ")
-                print(upper_episode[step].a_t[1][i])
+               -- print("The action for agent " .. i .. " is ")
+               -- print(upper_episode[step].a_t[1][i])
             end
             if opt.model_dial == 0 and opt.game_comm_bits > 0 then
                 upper_episode[step].a_comm_t[{ {}, { i } }] = max_a_comm:type(opt.dtype)
@@ -529,13 +532,13 @@ print('run episode '.. e)
             end
             -- Compute Q values
             local comm, state, q_t
-            agent[i].lower_state[step], q_t = unpack(model.lower_agent[model.id(step, i)]:forward(agent[i].lower_input[step]))
+            agent[i].lower_state[step], q_t = unpack(lowerModel.agent[lowerModel.id(step, i)]:forward(agent[i].lower_input[step]))
 
 
             --Print the communication for each agent
             if test_mode then
-                print("Agent " .. i .. "'s Current state: " .. time_target[1][i] .. ' '.. lower_episode[step].s_t[i][1][1] .. ' ' .. lower_episode[step].s_t[i][1][2] )
-                print(q_t[1]:view(1,-1))
+              --  print("Agent " .. i .. "'s Current state: " .. time_target[1][i] .. ' '.. lower_episode[step].s_t[i][1][1] .. ' ' .. lower_episode[step].s_t[i][1][2] )
+              --  print(q_t[1]:view(1,-1))
             end
 
             -- Pick an action (epsilon-greedy)
@@ -561,8 +564,8 @@ print('run episode '.. e)
             -- Store actions
             lower_episode[step].a_t[{ {}, { i } }] = max_a:type(opt.dtype)
             if test_mode then --prints out the actions for the test mode
-                print("The action for agent " .. i .. " is ")
-                print(lower_episode[step].a_t[1][i])
+              --  print("The action for agent " .. i .. " is ")
+              --  print(lower_episode[step].a_t[1][i])
             end
 
 	    --asking for adviced action from game
@@ -594,9 +597,9 @@ print('run episode '.. e)
         lower_episode[step].r_t, lower_episode[step].terminal = game:lower_step(lower_episode[step].a_t,time_target)
 	
 	if test_mode then
-	    print('reward achieved: ')
-	    print(lower_episode[step].r_t[1])
-	    print('terminated: '.. lower_episode[step].terminal[1])
+	  --  print('reward achieved: ')
+	  --  print(lower_episode[step].r_t[1])
+	  --  print('terminated: '.. lower_episode[step].terminal[1])
 	end
 
         -- Accumulate steps (not for +1 step)
@@ -633,7 +636,7 @@ print('run episode '.. e)
                 }
 
                 -- Forward target
-                local state, q_t_target = unpack(model.lower_agent_target[model.id(step, i)]:forward(agent[i].lower_input_target[step]))
+                local state, q_t_target = unpack(lowerModel.agent_target[lowerModel.id(step, i)]:forward(agent[i].lower_input_target[step]))
                 agent[i].lower_state_target[step] = state
 
                 -- Limit actions
@@ -714,14 +717,14 @@ for e = 1, opt.nepisodes do
     local time = sys.clock()
 
     -- Model training
-    model.training(model.upper_agent)
-    model.training(model.lower_agent)
+    upperModel.training(upperModel.agent)
+    lowerModel.training(lowerModel.agent)
 
     --Print which epoch the run is on
     --print("Current epoch: " .. e)
 
     -- Run episode
-    upper_episode , lower_episode , agent = run_episode(opt, game, model, agent, e)
+    upper_episode , lower_episode , agent = run_episode(opt, game, upperModel, lowerModel, agent, e)
 
     -- Rewards stats
     stats.upper_train_r[(e - 1) % opt.step + 1] = upper_episode.r:mean(1)
@@ -742,7 +745,7 @@ for e = 1, opt.nepisodes do
         for i = 1, opt.game_nagents do
 
             -- Compute Q values
-            local state, q_t = unpack(model.lower_agent[model.id(step, i)].output)
+            local state, q_t = unpack(lowerModel.agent[lowerModel.id(step, i)].output)
 
             -- Compute td error
             lower_td_err:zero()
@@ -781,7 +784,7 @@ for e = 1, opt.nepisodes do
             stats.lower_td_err[(e - 1) % opt.step + 1] = stats.lower_td_err[(e - 1) % opt.step + 1] + 0.5 * lower_td_err:clone():pow(2):mean()
 
             -- Backward pass
-            local lower_grad = model.lower_agent[model.id(step, i)]:backward(agent[i].lower_input[step], {
+            local lower_grad = lowerModel.agent[lowerModel.id(step, i)]:backward(agent[i].lower_input[step], {
                 agent[i].lower_d_state[step_back - 1],
                 lower_d_err
             })
@@ -807,7 +810,7 @@ for e = 1, opt.nepisodes do
         for i = 1, opt.game_nagents do
 
             -- Compute Q values
-            local state, q_t = unpack(model.upper_agent[model.id(step, i)].output)
+            local state, q_t = unpack(upperModel.agent[upperModel.id(step, i)].output)
 
             -- Compute td error
             upper_td_err:zero()
@@ -828,12 +831,12 @@ for e = 1, opt.nepisodes do
                     if upper_episode[step].a_t[b][i] > 0 then
                         upper_td_err[b] = upper_episode[step].r_t[b][i] - q_t[b][upper_episode[step].a_t[b][i]]
                         upper_d_err[{ { b }, { upper_episode[step].a_t[b][i] } }] = -upper_td_err[b]
-if upper_d_err[b][3] ~= 0 then
-print(b)
-print(upper_episode[step].r_t[b][i])
-print(upper_episode[step].a_t[b][i])
-print(q_t[b][upper_episode[step].a_t[b][i]])
-print(upper_d_err[b]) end
+--if upper_d_err[b][3] ~= 0 then
+--print(b)
+--print(upper_episode[step].r_t[b][i])
+--print(upper_episode[step].a_t[b][i])
+--print(q_t[b][upper_episode[step].a_t[b][i]])
+--print(upper_d_err[b]) end
                     else
                         error('Error!')
                     end
@@ -861,7 +864,7 @@ print(upper_d_err[b]) end
             end
 
             -- Backward pass
-            local upper_grad = model.upper_agent[model.id(step, i)]:backward(agent[i].upper_input[step], {
+            local upper_grad = upperModel.agent[upperModel.id(step, i)]:backward(agent[i].upper_input[step], {
                 agent[i].upper_d_state[step_back - 1],
                 upper_d_err
             })
@@ -918,7 +921,7 @@ print(upper_d_err[b]) end
     end
 
     --upper_optim_config.learningRate = opt.learningrate * lower_episode.r:mean(1):mean(2):type(opt.dtype):squeeze()
-print(lower_episode.r:mean(1):mean(2):type(opt.dtype):squeeze())
+--print(upper_episode.r:mean(1):mean(2):type(opt.dtype):squeeze())
 
     upper_optim_func(upper_feval, upper_params, upper_optim_config, optim_state)
     lower_optim_func(lower_feval, lower_params, lower_optim_config, optim_state)
@@ -943,7 +946,7 @@ print(lower_episode.r:mean(1):mean(2):type(opt.dtype):squeeze())
     if e % opt.step_test == 0 then
         local test_idx = (e / opt.step_test - 1) % (opt.step / opt.step_test) + 1
 
-        local upper_episode , lower_episode , _ = run_episode(opt, game, model, agent, e, true)
+        local upper_episode , lower_episode , _ = run_episode(opt, game, upperModel, lowerModel, agent, e, true)
         stats.upper_test_r[test_idx] = upper_episode.r:mean(1)
         stats.lower_test_r[test_idx] = lower_episode.r:mean(1)
         stats.steps[test_idx] = lower_episode.steps:mean()
@@ -1000,8 +1003,10 @@ print(lower_episode.r:mean(1):mean(2):type(opt.dtype):squeeze())
     end
 
     -- run model specific statistics
-    model.stats(opt, game, stats, e)
+    upperModel.stats(opt, game, stats, e)
+    lowerModel.stats(opt, game, stats, e)
     -- run model specific statistics
-    model.save(opt, stats, model)
+    --upperModel.save(opt, stats, upperModel)
+    --lowerModel.save(opt, stats, lowerModel)
 end
 

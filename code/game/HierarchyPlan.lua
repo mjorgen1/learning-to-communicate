@@ -36,7 +36,6 @@ function HierarchyPlan:__init(opt)
     self.reward_all_die = -1 + self.opt.game_reward_shift
     self.reward_small_off = -0.2
 
-    self.reward_option =  'potential' --'optimisable' 'time-changing' 'easy'
 
     -- Spawn new game
     self:reset(1)
@@ -150,7 +149,6 @@ end
 function HierarchyPlan:getReward(a_t,time_target)
     
     self.reward = torch.zeros(self.opt.bs, self.opt.game_nagents)
-    self.upper_reward = torch.zeros(self.opt.bs, self.opt.game_nagents)
 
     for b = 1, self.opt.bs do
 
@@ -282,7 +280,7 @@ function HierarchyPlan:imitateAction()
                 if (self.agent_pos[b][agent] < self.lever_pos[b][agent]) then --if agent is behind lever, move forward
                     pAction[b][agent] = 2 
                 elseif (self.agent_pos[b][agent] == self.lever_pos[b][agent]) then --if agent at lever
-                    if (step == self.time_target[b][1]+1) then
+                    if (step == self.time_target[b][agent]+1) then
                         pAction[b][agent] = 3 --pull if at the correct time
                     else
                         pAction[b][agent] = 1 --stay put, until its the time to pull
