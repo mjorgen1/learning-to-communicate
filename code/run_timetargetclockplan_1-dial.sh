@@ -6,14 +6,14 @@ th commWith4States.lua \
 -game_comm_limited 0 \
 -game_comm_bits 0 \
 -game_comm_sigma 1 \
--nsteps 5 \
--gamma 0.6 \
+-nsteps 4 \
+-gamma 0.7 \
 -model_dial 0 \
 -model_bn 1 \
 -model_know_share 1 \
 -model_action_aware 1 \
 -model_rnn_size 512 \
--model_rnn_layers 2 \
+-model_rnn_layers 1 \
 -model_rnn 'lstm' \
 -bs 32 \
 -learningrate 0.0005 \
@@ -21,7 +21,7 @@ th commWith4States.lua \
 -step 100 \
 -step_test 10 \
 -step_target 100 \
--model_dropout 0.3 \
--eps 0.01 \
--imitation_Learning 1 \
+-model_dropout 0.2 \
+-eps 0.05 \
+-imitation_Learning 0 \
 -cuda 1

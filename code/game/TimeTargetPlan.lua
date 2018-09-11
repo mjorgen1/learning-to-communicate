@@ -72,7 +72,9 @@ function SingleLeverPlan:reset()
     for b = 1, self.opt.bs do
 	for agent = 1, self.opt.game_nagents do
             self.lever_pos[{ { b }, { agent } }] = torch.random(2,4)
-	    self.time_target[{{b},{agent}}] = torch.random(1,4)
+
+	    self.time_target[{{b},{agent}}] = torch.random(self.lever_pos[b][agent]-1 ,3)
+
         end
 
     end

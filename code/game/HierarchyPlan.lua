@@ -257,12 +257,11 @@ function HierarchyPlan:getState()
     local state = {}
 
     for agent = 1, self.opt.game_nagents do
-        state[agent] = torch.Tensor(self.opt.bs,3)
+        state[agent] = torch.Tensor(self.opt.bs,2)
 
         for b = 1, self.opt.bs do
 	    state[agent][{{b}, {1}}]= self.lever_pos[b][agent]
 	    state[agent][{{b},{2}}]= self.agent_pos[b][agent]
-	    state[agent][{{b},{3}}]= self.step_counter
 
         end
     end

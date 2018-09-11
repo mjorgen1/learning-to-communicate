@@ -165,6 +165,9 @@ local upper_optim_func, upper_optim_config = upperModel.optim()
 local lower_optim_func, lower_optim_config = lowerModel.optim()
 local optim_state = {}
 
+local upper_learningrate = opt.learningrate
+local lower_learningrate = opt.learningrate
+
 -- Initialise agents
 local agent = {}
 for i = 1, opt.game_nagents do
@@ -510,7 +513,6 @@ local function run_episode(opt, game, upperModel, lowerModel, agent, e, test_mod
 		time_target[{{},{i}}]:squeeze():type(opt.dtype),
                 lower_episode[step].s_t[i][{{},{1}}]:squeeze():type(opt.dtype),
                 lower_episode[step].s_t[i][{{},{2}}]:squeeze():type(opt.dtype),
-                lower_episode[step].s_t[i][{{},{3}}]:squeeze():type(opt.dtype),
                 agent[i].id,
                 agent[i].lower_state[step - 1]
             }
@@ -630,9 +632,8 @@ local function run_episode(opt, game, upperModel, lowerModel, agent, e, test_mod
                     agent[i].lower_input[step][2],
                     agent[i].lower_input[step][3],
                     agent[i].lower_input[step][4],
-                    agent[i].lower_input[step][5],
                     agent[i].lower_state_target[step - 1],
-                    agent[i].lower_input[step][7],
+                    agent[i].lower_input[step][6],
                 }
 
                 -- Forward target
@@ -790,7 +791,7 @@ for e = 1, opt.nepisodes do
             })
 
             --'state' is the 3rd input, so we can extract d_state
-            agent[i].lower_d_state[step_back] = lower_grad[6]
+            agent[i].lower_d_state[step_back] = lower_grad[5]
 
             --For dial we need to write add the derivatives w/ respect to the incoming messages to the d_comm tracker
         end
@@ -831,12 +832,6 @@ for e = 1, opt.nepisodes do
                     if upper_episode[step].a_t[b][i] > 0 then
                         upper_td_err[b] = upper_episode[step].r_t[b][i] - q_t[b][upper_episode[step].a_t[b][i]]
                         upper_d_err[{ { b }, { upper_episode[step].a_t[b][i] } }] = -upper_td_err[b]
---if upper_d_err[b][3] ~= 0 then
---print(b)
---print(upper_episode[step].r_t[b][i])
---print(upper_episode[step].a_t[b][i])
---print(q_t[b][upper_episode[step].a_t[b][i]])
---print(upper_d_err[b]) end
                     else
                         error('Error!')
                     end
@@ -920,10 +915,11 @@ for e = 1, opt.nepisodes do
         return nil, lower_gradParams
     end
 
-    --upper_optim_config.learningRate = opt.learningrate * lower_episode.r:mean(1):mean(2):type(opt.dtype):squeeze()
---print(upper_episode.r:mean(1):mean(2):type(opt.dtype):squeeze())
-
+ 
+    upper_optim_config.learningRate = upper_learningrate
     upper_optim_func(upper_feval, upper_params, upper_optim_config, optim_state)
+
+    lower_optim_config.learningRate = lower_learningrate
     lower_optim_func(lower_feval, lower_params, lower_optim_config, optim_state)
 
     -- Gradient statistics
@@ -950,6 +946,26 @@ for e = 1, opt.nepisodes do
         stats.upper_test_r[test_idx] = upper_episode.r:mean(1)
         stats.lower_test_r[test_idx] = lower_episode.r:mean(1)
         stats.steps[test_idx] = lower_episode.steps:mean()
+
+	te_r = lower_episode.r:mean(1):mean(2):type(opt.dtype):squeeze()
+	
+        if te_r >= 0.99 then
+	    lower_learningrate = opt.learningrate *0.001
+	    opt.lower_eps = 0.002
+	    upper_learningrate = opt.learningrate
+        elseif te_r >= 0.97 then
+	    lower_learningrate = opt.learningrate *0.01
+	    opt.lower_eps = 0.005
+	    upper_learningRate = opt.learningrate *0.1
+        elseif te_r >= 0.95 then
+	    lower_learningrate = opt.learningrate *0.1
+	    opt.lower_eps = 0.01
+	    upper_learningRate = opt.learningrate *0.01
+        elseif te_r <= 0.8 then
+	    lower_learningrate = opt.learningrate
+	    opt.lower_eps = 0.05
+	    upper_learningRate = opt.learningrate * 0.001
+	end
     end
 
     -- Compute statistics

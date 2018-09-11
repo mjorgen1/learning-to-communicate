@@ -1,5 +1,5 @@
 #!/bin/bash
-th commWith2States.lua \
+th commBatchCopy.lua \
 -game SimplePlan \
 -game_nagents 2 \
 -game_action_space 3 \
@@ -14,7 +14,7 @@ th commWith2States.lua \
 -model_action_aware 1 \
 -model_rnn_size 350 \
 -model_rnn_layers 1 \
--model_rnn 'lstm' \
+-model_rnn 'gru' \
 -bs 32 \
 -learningrate 0.0005 \
 -nepisodes 4500 \

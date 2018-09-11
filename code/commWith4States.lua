@@ -350,8 +350,8 @@ local function run_episode(opt, game, model, agent, e, test_mode)
 
             --Print the communication for each agent
             if test_mode then
-                print("Agent " .. i .. "'s Current state: " .. episode[step].s_t[i][1][1] .. ' ' .. episode[step].s_t[i][1][2].. ' ' .. episode[step].s_t[i][1][3] .. ' ' .. episode[step].s_t[i][1][4])
-                print(q_t[1]:view(1,-1))
+                --print("Agent " .. i .. "'s Current state: " .. episode[step].s_t[i][1][1] .. ' ' .. episode[step].s_t[i][1][2].. ' ' .. episode[step].s_t[i][1][3] .. ' ' .. episode[step].s_t[i][1][4])
+                --print(q_t[1]:view(1,-1))
             end
 
             -- Pick an action (epsilon-greedy)
@@ -404,8 +404,8 @@ local function run_episode(opt, game, model, agent, e, test_mode)
             -- Store actions
             episode[step].a_t[{ {}, { i } }] = max_a:type(opt.dtype)
             if test_mode then --prints out the actions for the test mode
-                print("The action for agent " .. i .. " is ")
-                print(episode[step].a_t[1][i])
+               -- print("The action for agent " .. i .. " is ")
+               -- print(episode[step].a_t[1][i])
             end
             if opt.model_dial == 0 and opt.game_comm_bits > 0 then
                 episode[step].a_comm_t[{ {}, { i } }] = max_a_comm:type(opt.dtype)
@@ -491,9 +491,9 @@ local function run_episode(opt, game, model, agent, e, test_mode)
         episode[step].r_t, episode[step].terminal = game:step(episode[step].a_t,e)
 	
 	if test_mode then
-	    print('reward achieved: ')
-	    print(episode[step].r_t[1])
-	    print('terminated: '.. episode[step].terminal[1])
+	   -- print('reward achieved: ')
+	   -- print(episode[step].r_t[1])
+	   -- print('terminated: '.. episode[step].terminal[1])
 	end
 
         -- Accumulate steps (not for +1 step)
@@ -827,6 +827,22 @@ for e = 1, opt.nepisodes do
         stats.test_r[test_idx] = episode.r:mean(1)
         stats.steps[test_idx] = episode.steps:mean()
         stats.comm_per[test_idx] = episode.comm_count / (episode.comm_count + episode.non_comm_count)
+
+	te_r = episode.r:mean(1):mean(2):type(opt.dtype):squeeze()
+	
+        if te_r >= 0.99 then
+	    optim_config.learningRate = opt.learningrate *0.001
+	    opt.eps = 0.002
+        elseif te_r >= 0.97 then
+	    optim_config.learningRate = opt.learningrate *0.01
+	    opt.eps = 0.005
+        elseif te_r >= 0.95 then
+	    optim_config.learningRate = opt.learningrate *0.1
+	    opt.eps = 0.01
+        elseif te_r <= 0.8 then
+	    optim_config.learningRate = opt.learningrate
+	    opt.eps = 0.05
+	end
     end
 
     -- Compute statistics

@@ -19,7 +19,7 @@ th commHierarchy.lua \
 -model_lower_rnn_layers 1 \
 -model_rnn 'lstm' \
 -bs 32 \
--learningrate 0.00005 \
+-learningrate 0.00002 \
 -nepisodes 31250 \
 -step 100 \
 -step_test 10 \
@@ -28,5 +28,5 @@ th commHierarchy.lua \
 -lower_eps 0.05 \
 -upper_model_dropout 0.3 \
 -lower_model_dropout 0.2 \
--imitation_Learning 1 \
+-imitation_Learning 0 \
 -cuda 1

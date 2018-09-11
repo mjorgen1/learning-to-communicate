@@ -339,8 +339,9 @@ local function run_episode(opt, game, model, agent, e, test_mode, gradient_check
             -- Compute Q values
             local comm, state, q_t
             agent[i].state[step], q_t = unpack(model.agent[model.id(step, i)]:forward(agent[i].input[step]))
-
-
+print(#agent[i].input[step])
+print(#agent[i].state[step])
+print(q_t)
             -- If dial split out the comm values from q values
             if opt.model_dial == 1 then
                 q_t, comm = DRU(q_t, test_mode, gradient_check)
@@ -629,7 +630,7 @@ end
 function DRU(q_t, test_mode, gradient_check)
     if opt.model_dial == 0 then error('Warning!! Should only be used in DIAL') end
     local bound = opt.game_action_space
-
+print(q_t)
     local q_t_n = q_t[{ {}, { 1, bound } }]:clone()
     local comm = q_t[{ {}, { bound + 1, opt.game_action_space_total } }]:clone()
     if test_mode then
