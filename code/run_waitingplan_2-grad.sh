@@ -1,10 +1,10 @@
 #!/bin/bash
-th commWith2States.lua \
--game SimplePlan \
+th commBatchCopy.lua \
+-game WaitingPlan \
 -game_nagents 2 \
--game_action_space 3 \
--game_comm_limited 0 \
--game_comm_bits 2 \
+-game_action_space 2 \
+-game_comm_limited 1 \
+-game_comm_bits 3 \
 -game_comm_sigma 3 \
 -nsteps 8 \
 -gamma 0.6 \
@@ -12,16 +12,16 @@ th commWith2States.lua \
 -model_bn 1 \
 -model_know_share 1 \
 -model_action_aware 1 \
--model_rnn_size 350 \
--model_rnn_layers 1 \
--model_rnn 'gru' \
--bs 32 \
+-model_rnn_size 512 \
+-model_rnn_layers 2 \
+-model_rnn 'lstm' \
+-bs 10 \
 -learningrate 0.0005 \
--nepisodes 4500 \
+-nepisodes 15000 \
 -step 100 \
 -step_test 10 \
 -step_target 100 \
--eps 0.01 \
--model_dropout 0.6 \
+-eps 0.05 \
+-model_dropout 0.5 \
 -imitation_Learning 0 \
 -cuda 1
