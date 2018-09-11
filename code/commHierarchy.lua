@@ -956,15 +956,15 @@ for e = 1, opt.nepisodes do
         elseif te_r >= 0.97 then
 	    lower_learningrate = opt.learningrate *0.01
 	    opt.lower_eps = 0.005
-	    upper_learningRate = opt.learningrate *0.1
+	    upper_learningrate = opt.learningrate *0.1
         elseif te_r >= 0.95 then
 	    lower_learningrate = opt.learningrate *0.1
 	    opt.lower_eps = 0.01
-	    upper_learningRate = opt.learningrate *0.01
+	    upper_learningrate = opt.learningrate *0.01
         elseif te_r <= 0.8 then
 	    lower_learningrate = opt.learningrate
 	    opt.lower_eps = 0.05
-	    upper_learningRate = opt.learningrate * 0.001
+	    upper_learningrate = opt.learningrate * 0.001
 	end
     end
 
