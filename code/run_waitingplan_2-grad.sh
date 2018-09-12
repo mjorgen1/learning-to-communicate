@@ -17,7 +17,7 @@ th commBatchCopy.lua \
 -model_rnn 'lstm' \
 -bs 10 \
 -learningrate 0.0005 \
--nepisodes 15000 \
+-nepisodes 9000 \
 -step 100 \
 -step_test 10 \
 -step_target 100 \

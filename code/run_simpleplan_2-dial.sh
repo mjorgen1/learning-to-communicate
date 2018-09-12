@@ -12,7 +12,7 @@ th commWith2States.lua \
 -model_bn 1 \
 -model_know_share 1 \
 -model_action_aware 1 \
--model_rnn_size 350 \
+-model_rnn_size 512 \
 -model_rnn_layers 1 \
 -model_rnn 'gru' \
 -bs 32 \
