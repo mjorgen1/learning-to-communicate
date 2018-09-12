@@ -172,14 +172,16 @@ return function(opt)
             stats.test_god = stats.test_god or torch.zeros(opt.step / opt.step_test, opt.game_nagents)
 
             -- Naive strategy
-            local r_naive = 0
-            for b = 1, opt.bs do
-                local lever_pos = game.lever_pos[b]
-                if lever_pos[1] == lever_pos[2] then
-                    r_naive = r_naive + game.reward_all_live
-                end
-            end
-            stats.test_opt[test_idx] = r_naive / opt.bs
+            --local r_naive = 0
+            --for b = 1, opt.bs do
+            --    local has_been = game.has_been[{ { b }, { 1, opt.nsteps }, {} }]:sum(2):squeeze(2):gt(0):float():sum()
+            --   if has_been == opt.game_nagents then
+            --        r_naive = r_naive + game.reward_all_live
+            --    else
+            --        r_naive = r_naive + game.reward_all_die
+            --    end
+            --end
+            --stats.test_opt[test_idx] = r_naive / opt.bs
 
             -- God strategy
             local r_god = 0
@@ -228,33 +230,31 @@ return function(opt)
 
         local action_aware_size = 0
         if opt.model_action_aware == 1 then
-            action_aware_size = opt.game_action_space_total
+            action_aware_size = opt.game_upper_action_space_total
         end
 
 
         -- Process inputs
         local model_input = nn.Sequential()
         model_input:add(nn.CAddTable(2))
-        -- if opt.model_bn == 1 then model_input:add(nn.BatchNormalization(opt.model_rnn_size)) end
+        -- if opt.model_bn == 1 then model_input:add(nn.BatchNormalization(opt.model_upper_rnn_size)) end
 
-        local model_state_1 = nn.Sequential()
-        model_state_1:add(nn.LookupTable(opt.nsteps+1, opt.model_rnn_size))
-        local model_state_2 = nn.Sequential()
-        model_state_2:add(nn.LookupTable(opt.nsteps+1, opt.model_rnn_size))
+        local model_state = nn.Sequential()
+        model_state:add(nn.LookupTable(opt.nsteps+1, opt.model_upper_rnn_size))
 
         -- RNN
         local model_rnn
         if opt.model_rnn == 'lstm' then
-            model_rnn = LSTM(opt.model_rnn_size,
-                opt.model_rnn_size,
-                opt.model_rnn_layers,
-                opt.model_dropout,
+            model_rnn = LSTM(opt.model_upper_rnn_size,
+                opt.model_upper_rnn_size,
+                opt.model_upper_rnn_layers,
+                opt.upper_model_dropout,
                 opt.model_bn == 1)
         elseif opt.model_rnn == 'gru' then
-            model_rnn = GRU(opt.model_rnn_size,
-                opt.model_rnn_size,
-                opt.model_rnn_layers,
-                opt.model_dropout)
+            model_rnn = GRU(opt.model_upper_rnn_size,
+                opt.model_upper_rnn_size,
+                opt.model_upper_rnn_layers,
+                opt.upper_model_dropout)
         end
 
         -- use default initialization for convnet, but uniform -0.08 to .08 for RNN:
@@ -265,23 +265,21 @@ return function(opt)
 
         -- Output
         local model_out = nn.Sequential()
-        if opt.model_dropout > 0 then model_out:add(nn.Dropout(opt.model_dropout)) end
-        model_out:add(nn.Linear(opt.model_rnn_size, opt.model_rnn_size))
+        if opt.upper_model_dropout > 0 then model_out:add(nn.Dropout(opt.upper_model_dropout)) end
+        model_out:add(nn.Linear(opt.model_upper_rnn_size, opt.model_upper_rnn_size))
         model_out:add(nn.ReLU(true))
-        model_out:add(nn.Linear(opt.model_rnn_size, opt.game_action_space_total))
+        model_out:add(nn.Linear(opt.model_upper_rnn_size, opt.game_upper_action_space_total))
 
         -- Construct Graph
-        local in_state_1 = nn.Identity()()
-	local in_state_2 = nn.Identity()()
+        local in_state = nn.Identity()()
         local in_id = nn.Identity()()
         local in_rnn_state = nn.Identity()()
 
         local in_comm, in_action
 
         local in_all = {
-            model_state_1(in_state_1),
-            model_state_2(in_state_2),
-            nn.LookupTable(opt.game_nagents, opt.model_rnn_size)(in_id)
+            model_state(in_state),
+            nn.LookupTable(opt.game_nagents, opt.model_upper_rnn_size)(in_id)
         }
 
         -- Communication enabled
@@ -300,29 +298,13 @@ return function(opt)
             if opt.model_bn == 1 and opt.model_dial == 1 then
                 model_comm:add(nn.BatchNormalization(comm_size))
             end
-            model_comm:add(nn.Linear(comm_size, opt.model_rnn_size))
+            model_comm:add(nn.Linear(comm_size, opt.model_upper_rnn_size))
             if opt.model_comm_narrow == 1 then
                 model_comm:add(nn.ReLU(true))
             end
 
             -- Process inputs node
             table.insert(in_all, model_comm(in_comm))
-        end
-
-        -- Last action enabled
-        if opt.model_action_aware == 1 then
-            in_action = nn.Identity()()
-
-            -- Process action node (+1 for no-action at 0-step)
-            if opt.model_dial == 0 then
-                local in_action_aware = nn.CAddTable(2)({
-                    nn.LookupTable(opt.game_action_space + 1, opt.model_rnn_size)(nn.SelectTable(1)(in_action)),
-                    nn.LookupTable(opt.game_comm_bits + 1, opt.model_rnn_size)(nn.SelectTable(2)(in_action))
-                })
-                table.insert(in_all, in_action_aware)
-            else
-                table.insert(in_all, nn.LookupTable(action_aware_size + 1, opt.model_rnn_size)(in_action))
-            end
         end
 
         -- Process inputs
@@ -333,7 +315,7 @@ return function(opt)
         table.insert(rnn_input, proc_input)
 
         -- Restore state
-        for i = 1, opt.model_rnn_states do
+        for i = 1, opt.model_upper_rnn_states do
             table.insert(rnn_input, nn.SelectTable(i)(in_rnn_state))
         end
 
@@ -341,13 +323,13 @@ return function(opt)
 
         -- Split state and out
         local rnn_state = rnn_output
-        local rnn_out = nn.SelectTable(opt.model_rnn_states)(rnn_output)
+        local rnn_out = nn.SelectTable(opt.model_upper_rnn_states)(rnn_output)
 
         -- Process out
         local proc_out = model_out(rnn_out)
 
         -- Create model
-        local model_inputs = { in_state_1, in_state_2, in_id, in_rnn_state }
+        local model_inputs = { in_state, in_id, in_rnn_state }
         local model_outputs = { rnn_state, proc_out }
 
         if opt.game_comm_bits > 0 and opt.game_nagents > 1 then
@@ -361,6 +343,31 @@ return function(opt)
         nngraph.annotateNodes()
 
         local model = nn.gModule(model_inputs, model_outputs)
+
+	--[[print('in_rnn_state')
+	print(in_rnn_state)
+	print('rnn_output')
+	print(rnn_output)
+	print('model_input')
+	print(model_input)
+	print('model_state_1')
+	print(model_state_1)
+	print('model_state_2')
+	print(model_state_2)
+	print('model_out')
+	print(model_out)
+	print('model_comm')
+	print(model_comm)
+	print('model_inputs')
+	print(model_inputs)
+	print('model_outputs')
+	print(model_outputs)
+	print('in_all')
+	print(in_all)
+	print('proc_input')
+	print(proc_input)
+	print('proc_out')
+	print(proc_out)--]]
 	
         return model:type(opt.dtype)
     end
