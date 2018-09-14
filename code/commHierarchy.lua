@@ -491,8 +491,35 @@ local function run_episode(opt, game, upperModel, lowerModel, agent, e, test_mod
     end
 
     upper_episode[1].r_t=torch.zeros(opt.bs, opt.game_nagents)
+    failed = torch.zeros(opt.bs)
 
-    time_target = upper_episode[2].a_t
+    --[[for b = 1, opt.bs do
+
+	for agent = 1, opt.game_nagents do   
+
+
+		if upper_episode[2].s_t[1][b][1] > upper_episode[2].s_t[2][b][1] then
+                    upper_episode[2].a_t[b][agent] = upper_episode[2].s_t[1][b][1]-1
+		else
+		    upper_episode[2].a_t[b][agent] = upper_episode[2].s_t[2][b][1]-1
+		end
+	end
+    end--]]
+
+
+    time_target = upper_episode[2].a_t:clone()
+
+    for b = 1, opt.bs do
+
+	for agent = 1, opt.game_nagents do   
+ 
+            if time_target[b][agent] < upper_episode[step].s_t[agent][b][1]-1 then
+		failed[b] = 1
+		time_target[b][agent] = torch.random(upper_episode[step].s_t[agent][b][1]-1 ,3)
+	    end
+	end
+    end
+
 
     --set back for lower policy
     step = 1
@@ -663,6 +690,14 @@ local function run_episode(opt, game, upperModel, lowerModel, agent, e, test_mod
     end
 
     upper_episode[2].r_t = game:upper_step()
+
+    for b = 1, opt.bs do
+	if failed[b] == 1 then
+	    upper_episode[2].r_t[b][1] = 0
+	    upper_episode[2].r_t[b][2] = 0
+	end
+    end
+
     upper_episode.r = upper_episode[2].r_t
     upper_episode.steps = 2* torch.ones(opt.bs)
 
@@ -915,6 +950,45 @@ for e = 1, opt.nepisodes do
         return nil, lower_gradParams
     end
 
+te_r = lower_episode.r:mean(1):mean(2):type(opt.dtype):squeeze()	
+
+        if te_r >= 1.0 then
+	    lower_learningrate = opt.learningrate *0.0001
+	    opt.lower_eps = 0.001
+	    opt.upper_eps = 0.05
+	    upper_learningrate = opt.learningrate 
+print('reached 100')
+        elseif te_r >= 0.96 then
+	    lower_learningrate = opt.learningrate *0.001
+	    opt.lower_eps = 0.002
+	    opt.upper_eps = 0.05
+	    upper_learningrate = opt.learningrate *0.1
+print('reached 96')
+        elseif te_r >= 0.92 then
+	    lower_learningrate = opt.learningrate *0.01
+	    opt.lower_eps = 0.005
+	    opt.upper_eps = 0.05
+	    upper_learningrate = opt.learningrate *0.01
+print('reached 92')
+        elseif te_r >= 0.85 then
+	    lower_learningrate = opt.learningrate *0.1
+	    opt.lower_eps = 0.01
+	    opt.upper_eps = 0.05
+	    upper_learningrate = opt.learningrate *0.001
+print('reached 85')
+        elseif te_r >= 0.750 then
+	    lower_learningrate = opt.learningrate *0.1
+	    opt.lower_eps = 0.01
+	    opt.upper_eps = 0.5
+	    upper_learningrate = opt.learningrate *0.0001
+print('reached 75')
+        elseif te_r <= 0.6 then
+	    lower_learningrate = opt.learningrate
+	    opt.lower_eps = 0.05
+	    opt.upper_eps = 0.5
+	    upper_learningrate = opt.learningrate * 0.00001
+	end
+
  
     upper_optim_config.learningRate = upper_learningrate
     upper_optim_func(upper_feval, upper_params, upper_optim_config, optim_state)
@@ -947,25 +1021,7 @@ for e = 1, opt.nepisodes do
         stats.lower_test_r[test_idx] = lower_episode.r:mean(1)
         stats.steps[test_idx] = lower_episode.steps:mean()
 
-	te_r = lower_episode.r:mean(1):mean(2):type(opt.dtype):squeeze()
 	
-        if te_r >= 0.99 then
-	    lower_learningrate = opt.learningrate *0.001
-	    opt.lower_eps = 0.002
-	    upper_learningrate = opt.learningrate
-        elseif te_r >= 0.97 then
-	    lower_learningrate = opt.learningrate *0.01
-	    opt.lower_eps = 0.005
-	    upper_learningrate = opt.learningrate *0.1
-        elseif te_r >= 0.95 then
-	    lower_learningrate = opt.learningrate *0.1
-	    opt.lower_eps = 0.01
-	    upper_learningrate = opt.learningrate *0.01
-        elseif te_r <= 0.8 then
-	    lower_learningrate = opt.learningrate
-	    opt.lower_eps = 0.05
-	    upper_learningrate = opt.learningrate * 0.001
-	end
     end
 
     -- Compute statistics

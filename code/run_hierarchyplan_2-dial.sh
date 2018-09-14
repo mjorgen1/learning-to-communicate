@@ -19,7 +19,7 @@ th commHierarchy.lua \
 -model_lower_rnn_layers 1 \
 -model_rnn 'lstm' \
 -bs 32 \
--learningrate 0.00002 \
+-learningrate 0.0005 \
 -nepisodes 31250 \
 -step 100 \
 -step_test 10 \

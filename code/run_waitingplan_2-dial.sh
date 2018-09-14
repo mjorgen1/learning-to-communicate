@@ -13,11 +13,12 @@ th commWith2States.lua \
 -model_know_share 1 \
 -model_action_aware 1 \
 -model_rnn_size 512 \
--model_rnn_layers 2 \
+-model_rnn_layers 1 \
 -model_rnn 'lstm' \
 -bs 10 \
--learningrate 0.0005 \
--nepisodes 15000 \
+-learningra
+te 0.0005 \
+-nepisodes 5000 \
 -step 100 \
 -step_test 10 \
 -step_target 100 \
