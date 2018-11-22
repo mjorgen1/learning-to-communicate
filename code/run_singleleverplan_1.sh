@@ -1,0 +1,25 @@
+#!/bin/bash
+th commWith2States.lua \
+-game SingleLeverPlan \
+-game_nagents 1 \
+-game_action_space 4 \
+-game_comm_limited 0 \
+-game_comm_bits 0 \
+-game_comm_sigma 1 \
+-nsteps 10 \
+-gamma 0.3 \
+-model_dial 0 \
+-model_bn 1 \
+-model_know_share 1 \
+-model_action_aware 1 \
+-model_rnn_size 512 \
+-model_rnn_layers 2 \
+-model_rnn 'lstm' \
+-bs 32 \
+-learningrate 0.00005 \
+-nepisodes 31250 \
+-step 100 \
+-step_test 10 \
+-step_target 100 \
+-model_dropout 0.9 \
+-cuda 1

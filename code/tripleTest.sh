@@ -1,0 +1,11 @@
+#!/bin/bash
+./run_waitingplan_2-dial.sh
+./run_waitingplan_2-dial.sh
+./run_waitingplan_2-dial.sh
+./run_waitingplan_2-dial.sh
+./run_waitingplan_2-dial.sh
+./run_waitingplan_2-dial.sh
+./run_waitingplan_2-dial.sh
+./run_waitingplan_2-dial.sh
+./run_waitingplan_2-dial.sh
+./run_waitingplan_2-dial.sh
