@@ -1,41 +1,33 @@
 
-# Learning to Communicate with Deep Multi-Agent Reinforcement Learning
+# Hierarchical Multi-Agent Deep Reinforcement Learning to Develop Long-Term Coordination
 
-Jakob N. Foerster, Yannis M. Assael, Nando de Freitas, Shimon Whiteson
+Marie Ossenkopf, Mackenzie Jorgensen, & Kurt Geihs
 
 <p align="center">
-<img alt="Learning to Communicate" src="http://blog.yannisassael.com/wp-content/uploads/2016/09/switch_vis_768.jpg" />
 </p>
 
-We consider the problem of multiple agents sensing and acting in environments with the goal of maximising their shared utility. In these environments, agents must learn communication protocols in order to share information that is needed to solve the tasks. By embracing deep neural networks, we are able to demonstrate end-to-end learning of protocols in complex environments inspired by communication riddles and multi-agent computer vision problems with partial observability. We propose two approaches for learning in these domains: Reinforced Inter-Agent Learning (RIAL) and Differentiable Inter-Agent Learning (DIAL). The former uses deep Q-learning, while the latter exploits the fact that, during learning, agents can backpropagate error derivatives through (noisy) communication channels. Hence, this approach uses centralised learning but decentralised execution. Our experiments introduce new environments for studying the learning of communication protocols and present a set of engineering innovations that are essential for success in these domains.
+Multi-agent systems need to communicate to coordinate a shared task. We show that a recurrent neural network (RNN) can learn
+a communication protocol for coordination, even if the actions to coordinate lie outside of the communication range. We also show that a single RNN is unable to do this if there is an independent action sequence necessary before the coordinated action can be executed. We propose a hierarchical deep reinforcement learning model for multi-agent systems that separates the communication and coordination task from the action picking through a hierarchical policy. As a testbed, we propose the Dungeon Lever Game and we extend the Differentiable Inter-Agent Learning (DIAL) framework from Foerster et al's work "Learning to Communicate with Deep Multi-Agent Reinforcement Learning" (https://arxiv.org/abs/1605.06676). We owe a great deal to Foerster et al.'s work. We extended their code here to solve another problem with multi-agent communication and went a step further by adding hierarchical learning. 
 
 ## Links
 
-\- [arXiv pre-print](https://arxiv.org/abs/1605.06676)
-
-\- [Montreal Deep Learning Summer School 2016 talk](http://videolectures.net/deeplearning2016_foerster_learning_communicate/)
+\- [ResearchGate pre-print](https://www.researchgate.net/publication/331200217_Hierarchical_Multi-Agent_Deep_Reinforcement_Learning_to_Develop_Long-Term_Coordination)
 
 ## Execution
 ```
-$ # Requirements: nvidia-docker
+$ # Requirements: nvidia-docker (v1)
 $ # Build docker instance (takes a while)
 $ ./build.sh
 $ # Run docker instance
 $ ./run.sh
 $ # Run experiment e.g.
-$ ./run_switch_3-dial.sh
+$ run_hierarchyplan_2-dial.sh
 ```
 
-## Bibtex
-    @inproceedings{foerster2016learning,
-        title={Learning to communicate with deep multi-agent reinforcement learning},
-        author={Foerster, Jakob and Assael, Yannis M and de Freitas, Nando and Whiteson, Shimon},
-        booktitle={Advances in Neural Information Processing Systems},
-        pages={2137--2145},
-        year={2016} 
-    }
+## ACM Reference Format
+   Marie Ossenkopf, Mackenzie Jorgensen, and Kurt Geihs. 2019. Hierarchical Multi-Agent Deep Reinforcement Learning to Develop Long-Term Coordination. In The 34th ACM/SIGAPP Symposium on Applied Computing (SAC’19), April 8–12, 2019, Limassol, Cyprus. ACM, New York, NY, USA, 8 pages. https://doi.org/10.1145/3297280.3297371
 
 
-## License
+## License (from Foerster's work)
 
 Code licensed under the Apache License v2.0
