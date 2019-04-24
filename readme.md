@@ -7,7 +7,9 @@ Marie Ossenkopf, Mackenzie Jorgensen, & Kurt Geihs
 </p>
 
 Multi-agent systems need to communicate to coordinate a shared task. We show that a recurrent neural network (RNN) can learn
-a communication protocol for coordination, even if the actions to coordinate lie outside of the communication range. We also show that a single RNN is unable to do this if there is an independent action sequence necessary before the coordinated action can be executed. We propose a hierarchical deep reinforcement learning model for multi-agent systems that separates the communication and coordination task from the action picking through a hierarchical policy. As a testbed, we propose the Dungeon Lever Game and we extend the Differentiable Inter-Agent Learning (DIAL) framework from Foerster et al's work "Learning to Communicate with Deep Multi-Agent Reinforcement Learning" (https://arxiv.org/abs/1605.06676). We owe a great deal to Foerster et al.'s work. We extended their code here to solve another problem with multi-agent communication and went a step further by adding hierarchical learning. 
+a communication protocol for coordination, even if the actions to coordinate lie outside of the communication range. We also show that a single RNN is unable to do this if there is an independent action sequence necessary before the coordinated action can be executed. We propose a hierarchical deep reinforcement learning model for multi-agent systems that separates the communication and coordination task from the action picking through a hierarchical policy. As a testbed, we propose the Dungeon Lever Game and we extend the Differentiable Inter-Agent Learning (DIAL) framework from Foerster et al's work "Learning to Communicate with Deep Multi-Agent Reinforcement Learning" (https://arxiv.org/abs/1605.06676). 
+
+We owe a great deal to Foerster et al.'s work. We extended their code here to solve another problem with multi-agent communication and went a step further by adding hierarchical learning. 
 
 ## Links
 
