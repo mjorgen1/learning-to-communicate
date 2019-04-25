@@ -14,7 +14,7 @@ th commWith2States.lua \
 -model_action_aware 1 \
 -model_rnn_size 512 \
 -model_rnn_layers 1 \
--model_rnn 'gru' \
+-model_rnn 'lstm' \
 -bs 32 \
 -learningrate 0.0005 \
 -nepisodes 4500 \
