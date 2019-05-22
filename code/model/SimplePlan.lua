@@ -51,11 +51,12 @@ return function(opt)
             end
 
             -- keep stats
-            stats.history = stats.history or { { 'e', 'td_err', 'td_comm', 'train_r', 'test_r', 'test_opt', 'test_god', 'steps', 'comm_per', 'te' } }
+            stats.history = stats.history or { { 'e', 'td_err', 'td_comm', 'comm_grad', 'train_r', 'test_r', 'test_opt', 'test_god', 'steps', 'comm_per', 'te' } }
             table.insert(stats.history, {
                 stats.e,
                 stats.td_err:mean(),
                 stats.td_comm:mean(),
+	        stats.comm_grad:mean(),
                 stats.train_r:mean(),
                 stats.test_r:mean(),
                 stats.test_opt:mean(),
@@ -185,7 +186,7 @@ return function(opt)
             local r_god = 0
             for b = 1, opt.bs do
 		lever_pos = game.lever_pos[b]
-		if lever_pos[1] ~= 1 and lever_pos[2] ~= 1 then 
+		if lever_pos[1]~=4 and lever_pos[2]~=4 then 
                     r_god = r_god + game.reward_all_live
 		end
             end

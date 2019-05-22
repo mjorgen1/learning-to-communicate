@@ -121,9 +121,9 @@ else
     opt.dtype = 'torch.FloatTensor'
 end
 
---if opt.model_comm_narrow == 0 and opt.game_comm_bits > 0 then
---    opt.game_comm_bits = 2 ^ opt.game_comm_bits
---end
+if opt.model_comm_narrow == 0 and opt.game_comm_bits > 0 then
+    opt.game_comm_bits = 2 ^ opt.game_comm_bits
+end
 
 -- Initialise game
 local game = (require('game.' .. opt.game))(opt)
@@ -191,6 +191,7 @@ local stats = {
     r_episode = torch.zeros(opt.nsteps),
     td_err = torch.zeros(opt.step),
     td_comm = torch.zeros(opt.step),
+    comm_grad = torch.zeros(opt.step),
     train_r = torch.zeros(opt.step, opt.game_nagents),
     steps = torch.zeros(opt.step / opt.step_test),
     test_r = torch.zeros(opt.step / opt.step_test, opt.game_nagents),
@@ -263,6 +264,14 @@ local function run_episode(opt, game, model, agent, e, test_mode)
             episode[step].a_comm_t = torch.zeros(opt.bs, opt.game_nagents):type(opt.dtype)
         end
 
+	--get perfect actions
+	local  im_comm, im_actions
+	if opt.model_dial == 0 then
+	    im_comm, im_actions = game:imitateAction()
+	else
+	    im_actions = game:imitateAction()
+	end
+
         -- Iterate agents
         for i = 1, opt.game_nagents do
             agent[i].input[step] = {
@@ -289,10 +298,10 @@ local function run_episode(opt, game, model, agent, e, test_mode)
                     end
                     table.insert(agent[i].input[step], comm_lim)
 
-		    if test_mode then
-                	--[[print("\n")
-                	print("The comm sent to agent".. i)
-	                print(comm_lim[1])--]]
+		    if test_mode and e % 20 == 0 then
+                	--print("\n")
+                	--print("The comm sent to agent".. i)
+	                --print(comm_lim[1])
 
 		    end
                 else
@@ -346,7 +355,7 @@ local function run_episode(opt, game, model, agent, e, test_mode)
             end
 
             --Print the communication for each agent
-            if test_mode then
+            if test_mode and e % 20 == 0 then
                 --print("Agent " .. i .. "'s Current state: " .. episode[step].s_t[i][1][1] .. ' ' .. episode[step].s_t[i][1][2] )
                 --print(q_t[1]:view(1,-1))
             end
@@ -404,7 +413,7 @@ local function run_episode(opt, game, model, agent, e, test_mode)
             if opt.model_dial == 0 and opt.game_comm_bits > 0 then
                 episode[step].a_comm_t[{ {}, { i } }] = max_a_comm:type(opt.dtype)
             end
-            if test_mode then --prints out the actions for the test mode
+            if test_mode and e % 20 == 0 then --prints out the actions for the test mode
                 --print("The action for agent " .. i .. " is ")
                 --print(episode[step].a_t[1][i])
 		--print("Communication of agent " .. i .. " is ")
@@ -459,12 +468,12 @@ local function run_episode(opt, game, model, agent, e, test_mode)
                     end
                 end
                 if not test_mode and im_learning then
-                    --print(actions)
-                    local comm_actions, actions = game:imitateAction()
+                    
+                    episode[step].a_t[b][i] = im_actions[b][i]
                     if(opt.model_dial == 0) then
-                        episode[step].a_comm_t[b][i] = comm_actions[b][i]
+                        episode[step].a_comm_t[b][i] = im_comm[b][i]
                     end
-                    episode[step].a_t[b][i] = actions[b][i]
+		    --print(im_actions[b][i])
                 end
 
                 -- If communication action populate channel
@@ -493,10 +502,10 @@ local function run_episode(opt, game, model, agent, e, test_mode)
         -- Compute reward for current state-action pair
         episode[step].r_t, episode[step].terminal = game:step(episode[step].a_t,e)
 	
-	if test_mode then
-	   --[[ print('reward achieved: ')
-	    print(episode[step].r_t[1])
-	    print('terminated: '.. episode[step].terminal[1])--]]
+	if test_mode and e % 20 == 0 then
+	    --print('reward achieved: ')
+	    --print(episode[step].r_t[1])
+	    --print('terminated: '.. episode[step].terminal[1])
 	end
 
         -- Accumulate steps (not for +1 step)
@@ -774,7 +783,6 @@ for e = 1, opt.nepisodes do
                 local comm_limited = game:getCommLimited(step, i)
                 local comm_grad = grad[5]
 
-
                 if comm_limited then
                     for b = 1, opt.bs do
                         -- Agent could only receive the message if they were active
@@ -787,12 +795,15 @@ for e = 1, opt.nepisodes do
                     comm_grad[{ {}, { i } }]:zero()
                     episode[step].d_comm:add(comm_grad)
                 end
+
             end
         end
 
         -- Count backward steps
         step_back = step_back + 1
     end
+
+    stats.comm_grad[(e - 1) % opt.step + 1] = torch.sum(torch.sum(torch.sum(torch.abs(episode[2].d_comm),1),2),3):squeeze()/136
 
     -- Update gradients
     local feval = function(x)
@@ -855,12 +866,13 @@ for e = 1, opt.nepisodes do
 
     -- Print statistics
     if e % opt.step == 0 then
-        log.infof('e=%d, td_err=%.3f, td_err_avg=%.3f, td_comm=%.3f, td_comm_avg=%.3f, tr_r=%.2f, tr_r_avg=%.2f, te_r=%.2f, te_r_avg=%.2f, st=%.1f, comm=%.1f%%, grad=%.3f, t/s=%.2f s, t=%d m',
+        log.infof('e=%d, td_err=%.3f, td_err_avg=%.3f, td_comm=%.3f, td_comm_avg=%.3f, comm_grad=%.3f, tr_r=%.2f, tr_r_avg=%.2f, te_r=%.2f, te_r_avg=%.2f, st=%.1f, comm=%.1f%%, grad=%.3f, t/s=%.2f s, t=%d m',
             stats.e,
             stats.td_err:mean(),
             stats.td_err_avg,
             stats.td_comm:mean(),
             stats.td_comm_avg,
+	    stats.comm_grad:mean(),
             stats.train_r:mean(),
             stats.train_r_avg:mean(),
             stats.test_r:mean(),

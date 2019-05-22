@@ -3,7 +3,7 @@ th commWith2States.lua \
 -game SimplePlan \
 -game_nagents 2 \
 -game_action_space 3 \
--game_comm_limited 0 \
+-game_comm_limited 1 \
 -game_comm_bits 2 \
 -game_comm_sigma 3 \
 -nsteps 8 \
@@ -13,15 +13,15 @@ th commWith2States.lua \
 -model_know_share 1 \
 -model_action_aware 1 \
 -model_rnn_size 512 \
--model_rnn_layers 1 \
+-model_rnn_layers 2 \
 -model_rnn 'lstm' \
 -bs 32 \
--learningrate 0.0005 \
--nepisodes 4500 \
--step 100 \
--step_test 10 \
+-learningrate 0.0001 \
+-nepisodes 8000 \
+-step 20 \
+-step_test 2 \
 -step_target 100 \
--eps 0.01 \
--model_dropout 0.6 \
+-eps 0.05 \
+-model_dropout 0.3 \
 -imitation_Learning 0 \
 -cuda 1

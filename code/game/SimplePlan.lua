@@ -134,7 +134,7 @@ function SimplePlan:getCommLimited(step, i)
 
         -- Get range per batch
         for b = 1, self.opt.bs do
-            if self.agent_pos[b]:sum(1)[1] == 2 then
+            if step < 3 then--self.agent_pos[b]:sum(1)[1] == 2 then
                 if step > 1 and i == 1 then
                     range[b] = { 2, {} }
                 elseif step > 1 and i == 2 then
