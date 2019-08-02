@@ -1,0 +1,27 @@
+#!/bin/bash
+th commWith2States.lua \
+-game ComplexUpperPlan \
+-game_nagents 2 \
+-game_action_space 4 \
+-game_comm_limited 1 \
+-game_comm_bits 1 \
+-game_comm_sigma 10 \
+-nsteps 6 \
+-gamma 0.7 \
+-model_dial 1 \
+-model_bn 1 \
+-model_know_share 1 \
+-model_action_aware 1 \
+-model_rnn_size 224 \
+-model_rnn_layers 2 \
+-model_rnn 'lstm' \
+-bs 32 \
+-learningrate 0.0005 \
+-nepisodes 31250 \
+-step 100 \
+-step_test 10 \
+-step_target 100 \
+-eps 0.05 \
+-model_dropout 0.3 \
+-imitation_Learning 0 \
+-cuda 1

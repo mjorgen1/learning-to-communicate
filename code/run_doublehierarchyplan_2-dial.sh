@@ -1,0 +1,37 @@
+#!/bin/bash
+th commDoubleHierarchy.lua \
+-game DoubleHierarchyPlan \
+-game_nagents 2 \
+-game_meta_action_space 4 \
+-game_upper_action_space 3 \
+-game_lower_action_space 3 \
+-game_comm_limited 1 \
+-game_comm_bits 1 \
+-game_comm_sigma 1 \
+-nsteps 10 \
+-gamma 0.7 \
+-model_dial 1 \
+-model_bn 1 \
+-model_know_share 1 \
+-model_action_aware 1 \
+-model_meta_rnn_size 12 \
+-model_meta_rnn_layers 1 \
+-model_upper_rnn_size 512 \
+-model_upper_rnn_layers 2 \
+-model_lower_rnn_size 512 \
+-model_lower_rnn_layers 1 \
+-model_rnn 'lstm' \
+-bs 32 \
+-learningrate 0.0005 \
+-nepisodes 31250 \
+-step 100 \
+-step_test 10 \
+-step_target 100 \
+-meta_eps 0.05 \
+-upper_eps 0.05 \
+-lower_eps 0.05 \
+-meta_model_dropout 0.3 \
+-upper_model_dropout 0.3 \
+-lower_model_dropout 0.2 \
+-imitation_Learning 0 \
+-cuda 1
